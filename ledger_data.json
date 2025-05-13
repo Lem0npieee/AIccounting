@@ -1,0 +1,64 @@
+{
+  "entries": [
+    {
+      "amount": -25.0,
+      "category": "餐饮",
+      "specific_name": "麦当劳套餐",
+      "datetime": "2023-11-06 12:00:00",
+      "type": "expense",
+      "id": 1
+    },
+    {
+      "amount": 1000.0,
+      "category": "收入",
+      "specific_name": "卖花",
+      "datetime": "2023-11-07 00:00:00",
+      "type": "income",
+      "id": 2
+    },
+    {
+      "amount": null,
+      "category": null,
+      "specific_name": null,
+      "datetime": "2025-05-13 14:02:51",
+      "type": null,
+      "id": 3
+    },
+    {
+      "amount": 1.0,
+      "category": "其他收入",
+      "specific_name": "捡到钱",
+      "datetime": "2023-11-06 00:00:00",
+      "type": "income",
+      "is_accounting": true,
+      "id": 4
+    },
+    {
+      "amount": -10.0,
+      "category": "餐饮",
+      "specific_name": "吃饭",
+      "datetime": "2023-11-06 00:00:00",
+      "type": "expense",
+      "is_accounting": true,
+      "id": 5
+    },
+    {
+      "amount": -10.0,
+      "category": "餐饮",
+      "specific_name": "吃饭",
+      "datetime": "2023-11-06 12:00:00",
+      "type": "expense",
+      "is_accounting": true,
+      "id": 6
+    },
+    {
+      "amount": -102.0,
+      "category": "水电费",
+      "specific_name": "本月水电费",
+      "datetime": "2025-05-13 14:18:12",
+      "type": "expense",
+      "is_accounting": true,
+      "id": 7
+    }
+  ]
+}

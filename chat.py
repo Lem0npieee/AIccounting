@@ -1,0 +1,358 @@
+import requests
+import json
+import numpy as np
+import pandas as pd
+from scipy import stats
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+import re
+import datetime
+import os
+
+# 设置DeepSeek API
+DEEPSEEK_API_KEY = "sk-3b7ab35452b34c22b825f7d617501fd8"  # 替换为你的API密钥
+API_URL = "https://api.deepseek.com/v1/chat/completions"
+headers = {
+    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+    "Content-Type": "application/json"
+}
+
+def query_deepseek(prompt, language="zh", temperature=0):
+    """向DeepSeek API发送查询"""
+    data = {
+        "model": "deepseek-chat",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": temperature,
+        "max_tokens": 2000
+    }
+    response = requests.post(API_URL, headers=headers, json=data)
+    if response.status_code == 200:
+        return response.json()["choices"][0]["message"]["content"]
+    else:
+        print(f"Error: {response.status_code}")
+        return None
+
+# AI记账助手
+class AIAccountant:
+    def __init__(self):
+        self.data_store = LedgerDataStore()
+        # 预设账目类别
+        self.default_categories = {
+            "收入": ["工资", "奖金", "补贴", "兼职", "投资", "其他收入"],
+            "支出": ["餐饮", "购物", "交通", "住房", "娱乐", "教育", "医疗", "日用品", "其他支出"]
+        }
+    def _extract_accounting_info(self, user_message):
+        """
+        从用户消息中提取记账信息
+        使用AI模型解析用户输入，提取记账所需的关键信息
+        """
+        # 构建提示词，指导AI模型提取所需信息
+        prompt = f"""
+        请从以下用户输入中提取记账信息，并严格按照JSON格式返回。
+        
+        如果用户输入明显不是记账内容（如问候、闲聊、咨询等），请在返回的JSON中设置一个额外字段"is_accounting"为false。
+        
+        用户输入: {user_message}
+        
+        请提取以下信息:
+        1. 金额 (amount): 数值，收入为正数，支出为负数，如无明确表示是收入还是支出，默认为支出(负数)
+        2. 类别 (category): 对应的消费或收入类别
+        3. 具体名称 (specific_name): 具体的消费项目或收入来源
+        4. 日期时间 (datetime): 格式为 YYYY-MM-DD HH:MM:SS，如未指定则使用当前时间
+        5. 消费/收入类型 (type): "income"(收入)或"expense"(支出)
+        6. 是否为记账内容 (is_accounting): true或false
+        
+        JSON格式要求：
+        {{
+            "amount": 数值,
+            "category": "类别",
+            "specific_name": "具体名称",
+            "datetime": "YYYY-MM-DD HH:MM:SS",
+            "type": "income或expense",
+            "is_accounting": true或false
+        }}
+        
+        仅返回JSON格式的结果，不要有任何其他解释性文字。
+        """
+        
+        try:
+            response = query_deepseek(prompt)
+            # 提取JSON部分
+            if response:
+                match = re.search(r'({[\s\S]*})', response)
+                if match:
+                    json_str = match.group(1)
+                    data = json.loads(json_str)
+                    
+                    # 检查是否为记账内容
+                    if not data.get("is_accounting", True):
+                        return None
+                    
+                    # 检查记账必要字段是否存在
+                    if not data.get("amount") or not data.get("category"):
+                        return None
+                      # 无论用户输入什么，始终使用当前时间
+                    data["datetime"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    # 确保amount为数值并根据type调整正负
+                    if data.get("amount") is not None:
+                        amount = float(data["amount"])
+                        if data.get("type") == "income" and amount < 0:
+                            amount = abs(amount)
+                        elif data.get("type") == "expense" and amount > 0:
+                            amount = -amount
+                        data["amount"] = amount
+                    
+                    return data
+            return None
+        except Exception as e:
+            print(f"提取记账信息错误: {e}")
+            return None
+    
+    def _check_sensitive_content(self, text):
+        """检查是否有敏感内容"""
+        # 构建用于识别敏感内容的提示词
+        prompt = f"""
+        请检查以下文本是否包含违反法律法规的内容，如赌博、毒品等。如果包含，请简单说明包含什么敏感内容；如果不包含，请只回复"无敏感内容"。
+
+        文本: {text}
+        """
+        
+        response = query_deepseek(prompt)
+        if response and "无敏感内容" not in response:
+            return True, response
+        return False, None
+    def _generate_ai_response(self, extracted_info, action_taken=None):
+        """生成AI回复"""
+        if not action_taken:
+            action_taken = "提取信息"
+        
+        prompt = f"""
+        请针对以下记账操作生成一个友好的回复，回复要简洁、自然、亲切，根据记账性质(收入/支出)给予适当的评价或建议。
+        
+        记账信息: {json.dumps(extracted_info, ensure_ascii=False)}
+        操作类型: {action_taken}
+        
+        回复要求：
+        1. 确认记录的具体内容（金额、类别、具体名称）
+        2. 如果是支出，可以基于金额大小和类别给出适当的省钱建议（但不要过度说教）
+        3. 如果是收入，可以表示祝贺并鼓励
+        4. 回复应该有温度，像朋友一样交流，使用适当的表情符号增加亲近感
+        5. 总字数控制在100字以内
+        6. 严禁在回复中出现任何关于字数计数、表情选择或其他元注释的内容
+        7. 只输出最终回复内容，不要包含任何括号内的注释说明
+        """
+        
+        response = query_deepseek(prompt)
+        # 移除可能出现的元注释
+        response = re.sub(r'（注：.*?）', '', response)
+        response = re.sub(r'\(注：.*?\)', '', response)
+        return response
+    def _generate_report_response(self, report_type, time_period):
+        """生成报表分析回复"""
+        # 根据报表类型和时间周期获取相应数据
+        entries = self.data_store.get_entries()
+        # 构造报表分析的提示词
+        
+        if not entries:
+            return "目前没有任何记账数据，无法生成报表分析。请先添加一些记账数据吧！"
+        
+        # 简单数据统计
+        income_entries = [e for e in entries if float(e.get("amount", 0)) > 0]
+        expense_entries = [e for e in entries if float(e.get("amount", 0)) < 0]
+        
+        total_income = sum(float(e.get("amount", 0)) for e in income_entries)
+        total_expense = sum(abs(float(e.get("amount", 0))) for e in expense_entries)
+        
+        # 按类别统计
+        expense_by_category = {}
+        for entry in expense_entries:
+            category = entry.get("category", "未分类")
+            amount = abs(float(entry.get("amount", 0)))
+            expense_by_category[category] = expense_by_category.get(category, 0) + amount
+        
+        # 找出支出最高的三个类别
+        top_categories = sorted(expense_by_category.items(), key=lambda x: x[1], reverse=True)[:3]
+        
+        prompt = f"""
+        请根据以下记账数据分析，生成一份简洁明了的财务报表分析，语言要自然、生动，像理财顾问一样给出实用的建议。
+
+        统计周期: {time_period}
+        总收入: {total_income}
+        总支出: {total_expense}
+        净收入: {total_income - total_expense}
+        
+        支出最高的三个类别:
+        {", ".join([f"{cat}: {amount:.2f}元" for cat, amount in top_categories])}
+
+        分析要求：
+        1. 总结收支情况
+        2. 分析主要支出去向，并提供针对性的合理化建议
+        3. 如果支出大于收入，给出温和的提醒和改善建议
+        4. 根据支出结构，提出1-2条实用的理财建议
+        5. 语气友好、专业，不要说教
+        6. 总字数控制在150-200字之间
+        7. 严禁在回复中包含任何关于字数计数、表情选择或其他元注释的内容
+        8. 只输出最终回复内容，不要包含任何括号内的注释说明
+        """
+        
+        response = query_deepseek(prompt)
+        # 移除可能出现的元注释
+        response = re.sub(r'（注：.*?）', '', response)
+        response = re.sub(r'\(注：.*?\)', '', response)
+        return response
+    def process_user_message(self, user_message):
+        """处理用户消息并返回回复"""
+        # 检查敏感内容
+        has_sensitive, sensitive_info = self._check_sensitive_content(user_message)
+        if has_sensitive:
+            return f"抱歉，您的消息可能包含不适当的内容: {sensitive_info}。请重新输入合规的内容。"
+        
+        # 判断是否是查询或报表请求
+        if "报表" in user_message or "分析" in user_message or "统计" in user_message:
+            # 确定时间周期
+            time_period = "本月"
+            if "今天" in user_message or "当天" in user_message:
+                time_period = "今天"
+            elif "本周" in user_message or "这周" in user_message:
+                time_period = "本周"
+            elif "年" in user_message or "全年" in user_message:
+                time_period = "今年"
+                
+            return self._generate_report_response(report_type="general", time_period=time_period)
+        
+        # 提取记账信息
+        extracted_info = self._extract_accounting_info(user_message)
+        if extracted_info:
+            # 添加记账条目
+            entry_id = self.data_store.add_entry(extracted_info)
+            if entry_id:
+                return self._generate_ai_response(extracted_info, action_taken="添加")
+            else:
+                return "很抱歉，记账时出现了问题。请稍后再试。"
+        else:            # 如果无法提取记账信息，直接切换到聊天模式
+            prompt = f"""
+            你是一个专业的个人记账助手，名叫"AI记账"。你现在正在与用户进行日常聊天。请对用户的问题做出自然、友好的回答。
+            
+            如果用户问你是谁，请介绍自己是AI记账助手，可以帮助用户记录日常收支。
+            如果用户问你能做什么，请告诉他们你可以帮助记账、提供财务报表分析、提供理财建议等功能。
+            
+            用户的问题与记账无明显关联，所以不要强行将话题引回到记账，而是进行自然的对话交流。但在对话结束时，可以适当提示用户记账功能的存在。
+            
+            用户问题: {user_message}
+            
+            回答要求：
+            1. 简洁明了，不超过100字
+            2. 语气友好自然，像真人助手一样
+            3. 不要提示"无法提取记账信息"或类似内容
+            4. 如果是常规聊天，自然地回应，不要刻意引导记账
+            5. 严禁在回复中包含任何关于字数计数、表情选择或其他元注释的内容
+            6. 只输出最终回复内容，不要包含任何括号内的注释说明
+            """
+            
+            response = query_deepseek(prompt)
+            # 移除可能出现的元注释
+            response = re.sub(r'（注：.*?）', '', response)
+            response = re.sub(r'\(注：.*?\)', '', response)
+            return response
+
+# 数据存储类
+class LedgerDataStore:
+    def __init__(self, data_file="ledger_data.json"):
+        self.data_file = data_file
+        self.data = self._load_data()
+
+    def _load_data(self):
+        """加载记账数据"""
+        if os.path.exists(self.data_file):
+            try:
+                with open(self.data_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"加载数据文件错误: {e}")
+                return {"entries": []}
+        else:
+            return {"entries": []}
+    
+    def save_data(self):
+        """保存记账数据"""
+        try:
+            with open(self.data_file, 'w', encoding='utf-8') as f:
+                json.dump(self.data, f, ensure_ascii=False, indent=2)
+            return True
+        except Exception as e:
+            print(f"保存数据文件错误: {e}")
+            return False
+    
+    def add_entry(self, entry):
+        """添加记账条目"""
+        # 生成唯一ID
+        entry_id = len(self.data["entries"]) + 1
+        entry["id"] = entry_id
+        self.data["entries"].append(entry)
+        self.save_data()
+        return entry_id
+    
+    def update_entry(self, entry_id, updated_entry):
+        """更新记账条目"""
+        for i, entry in enumerate(self.data["entries"]):
+            if entry.get("id") == entry_id:
+                self.data["entries"][i].update(updated_entry)
+                self.save_data()
+                return True
+        return False
+    
+    def delete_entry(self, entry_id):
+        """删除记账条目"""
+        initial_length = len(self.data["entries"])
+        self.data["entries"] = [entry for entry in self.data["entries"] if entry.get("id") != entry_id]
+        if len(self.data["entries"]) < initial_length:
+            self.save_data()
+            return True
+        return False
+    
+    def get_entries(self, start_date=None, end_date=None, categories=None, include_income=True, include_expense=True):
+        """获取记账条目"""
+        filtered_entries = []
+        
+        for entry in self.data["entries"]:
+            # 检查日期范围
+            if start_date and entry.get("datetime", "") < start_date:
+                continue
+            if end_date and entry.get("datetime", "") > end_date:
+                continue
+            
+            # 检查类别
+            if categories and entry.get("category") not in categories:
+                continue
+            
+            # 检查收支类型
+            amount = float(entry.get("amount", 0))
+            if not include_income and amount > 0:
+                continue
+            if not include_expense and amount < 0:
+                continue
+            
+            filtered_entries.append(entry)
+        
+        return filtered_entries
+
+# 交互界面 - 命令行版本
+def main():
+    print("🤖 欢迎使用AI记账助手！")
+    print("👉 您可以直接输入收支情况，例如：'今天午饭花了35元'")
+    print("👉 或者查询报表，例如：'帮我分析本月的消费情况'")
+    print("👉 也可以与我闲聊，我会以助手的身份回答您的问题")
+    print("👉 输入'退出'或'exit'结束对话")
+    print("-" * 50)
+    
+    ai_accountant = AIAccountant()
+    
+    while True:
+        user_input = input("\n💬 请输入: ")
+        print("\n🤔 AI记账助手思考中...")
+        response = ai_accountant.process_user_message(user_input)
+        print(f"\n🤖 AI记账助手: {response}")
+
+if __name__ == "__main__":
+    main()
