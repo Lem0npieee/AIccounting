@@ -34,8 +34,8 @@ def query_deepseek(prompt, language="zh", temperature=0):
 
 # AI记账助手
 class AIAccountant:
-    def __init__(self):
-        self.data_store = LedgerDataStore()
+    def __init__(self, data_store):
+        self.data_store = data_store
         # 预设账目类别
         self.default_categories = {
             "收入": ["工资", "奖金", "补贴", "兼职", "投资", "其他收入"],
@@ -256,103 +256,6 @@ class AIAccountant:
             response = re.sub(r'\(注：.*?\)', '', response)
             return response
 
-# 数据存储类
-class LedgerDataStore:
-    def __init__(self, data_file="ledger_data.json"):
-        self.data_file = data_file
-        self.data = self._load_data()
 
-    def _load_data(self):
-        """加载记账数据"""
-        if os.path.exists(self.data_file):
-            try:
-                with open(self.data_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except Exception as e:
-                print(f"加载数据文件错误: {e}")
-                return {"entries": []}
-        else:
-            return {"entries": []}
-    
-    def save_data(self):
-        """保存记账数据"""
-        try:
-            with open(self.data_file, 'w', encoding='utf-8') as f:
-                json.dump(self.data, f, ensure_ascii=False, indent=2)
-            return True
-        except Exception as e:
-            print(f"保存数据文件错误: {e}")
-            return False
-    
-    def add_entry(self, entry):
-        """添加记账条目"""
-        # 生成唯一ID
-        entry_id = len(self.data["entries"]) + 1
-        entry["id"] = entry_id
-        self.data["entries"].append(entry)
-        self.save_data()
-        return entry_id
-    
-    def update_entry(self, entry_id, updated_entry):
-        """更新记账条目"""
-        for i, entry in enumerate(self.data["entries"]):
-            if entry.get("id") == entry_id:
-                self.data["entries"][i].update(updated_entry)
-                self.save_data()
-                return True
-        return False
-    
-    def delete_entry(self, entry_id):
-        """删除记账条目"""
-        initial_length = len(self.data["entries"])
-        self.data["entries"] = [entry for entry in self.data["entries"] if entry.get("id") != entry_id]
-        if len(self.data["entries"]) < initial_length:
-            self.save_data()
-            return True
-        return False
-    
-    def get_entries(self, start_date=None, end_date=None, categories=None, include_income=True, include_expense=True):
-        """获取记账条目"""
-        filtered_entries = []
-        
-        for entry in self.data["entries"]:
-            # 检查日期范围
-            if start_date and entry.get("datetime", "") < start_date:
-                continue
-            if end_date and entry.get("datetime", "") > end_date:
-                continue
-            
-            # 检查类别
-            if categories and entry.get("category") not in categories:
-                continue
-            
-            # 检查收支类型
-            amount = float(entry.get("amount", 0))
-            if not include_income and amount > 0:
-                continue
-            if not include_expense and amount < 0:
-                continue
-            
-            filtered_entries.append(entry)
-        
-        return filtered_entries
 
-# 交互界面 - 命令行版本
-def main():
-    print("🤖 欢迎使用AI记账助手！")
-    print("👉 您可以直接输入收支情况，例如：'今天午饭花了35元'")
-    print("👉 或者查询报表，例如：'帮我分析本月的消费情况'")
-    print("👉 也可以与我闲聊，我会以助手的身份回答您的问题")
-    print("👉 输入'退出'或'exit'结束对话")
-    print("-" * 50)
-    
-    ai_accountant = AIAccountant()
-    
-    while True:
-        user_input = input("\n💬 请输入: ")
-        print("\n🤔 AI记账助手思考中...")
-        response = ai_accountant.process_user_message(user_input)
-        print(f"\n🤖 AI记账助手: {response}")
 
-if __name__ == "__main__":
-    main()
