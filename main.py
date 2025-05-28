@@ -41,7 +41,6 @@ def main():
     print("👉 也可以与我闲聊，我会以助手的身份回答您的问题")
     print("👉 输入'退出'或'exit'结束对话")
     print("-" * 50)
-    
     # 主对话循环
     while True:
         user_input = input("\n💬 请输入: ")

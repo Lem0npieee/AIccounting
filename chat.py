@@ -150,7 +150,6 @@ class AIAccountant:
         # 构建用于识别敏感内容的提示词
         prompt = f"""
         请检查以下文本是否包含违反法律法规的内容，如赌博、毒品等。如果包含，请简单说明包含什么敏感内容；如果不包含，请只回复"无敏感内容"。
-
         文本: {text}
         """
         response = query_deepseek(prompt)
