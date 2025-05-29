@@ -232,8 +232,8 @@ const applyFilter = () => {
 
 // 重置筛选
 const resetFilter = () => {
-  filterExpense.value = []
-  filterIncome.value = []
+  filterExpense.value = [...expenseCategories]
+  filterIncome.value = [...incomeCategories]
 }
 
 // 切换类别选择
