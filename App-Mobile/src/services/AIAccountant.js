@@ -25,11 +25,14 @@ async function queryDeepseek(prompt, language = "zh", temperature = 0) {
       return "请提供有效的提示信息";
     }
 
-    // 构建请求数据 - 按照DeepSeek官方文档格式
+  // 构建请求数据 - 按照DeepSeek官方文档格式
     const data = {
       model: "deepseek-chat", // 使用DeepSeek-V3模型
       messages: [
-        { role: "system", content: "你是AI记账助手，可以帮助用户分析和记录收支信息。" },
+        { 
+          role: "system", 
+          content: "你是AI记账助手，可以帮助用户分析和记录收支信息。记账时只能使用预设类别，不可创建新类别。收入类别有：工资、奖金、补贴、兼职、投资、其他收入。支出类别有：餐饮、购物、交通、住房、娱乐、教育、医疗、日用品、其他支出。" 
+        },
         { role: "user", content: prompt }
       ],
       temperature: temperature,
@@ -123,9 +126,11 @@ class AIAccountant {
    * 从用户消息中提取记账信息
    * @param {string} userMessage 用户消息
    * @returns {Promise<Array|Object|null>} 提取的记账信息
-   */
-  async _extractAccountingInfo(userMessage) {
+   */  async _extractAccountingInfo(userMessage) {
     // 构建提示词，指导AI模型提取所需信息
+    const incomeCategories = this.defaultCategories["收入"].join(", ");
+    const expenseCategories = this.defaultCategories["支出"].join(", ");
+    
     const prompt = `
       请从以下用户输入中提取所有的记账信息，并严格按照JSON数组格式返回。用户可能会在一句话中提到多笔交易。
       
@@ -135,7 +140,16 @@ class AIAccountant {
       
       对于每笔交易，请提取以下信息:
       1. 金额 (amount): 数值，收入为正数，支出为负数，如无明确表示是收入还是支出，默认为支出(负数)
-      2. 类别 (category): 对应的消费或收入类别
+      2. 类别 (category): 必须从以下预设类别中选择，不得创建新类别
+         - 收入类别: ${incomeCategories}
+         - 支出类别: ${expenseCategories}
+         如果用户提到的类别不在上述列表中，请匹配到最相近的预设类别，例如:
+         - "玩具"应归类为"购物"或"娱乐"
+         - "彩票"应归类为"其他收入"
+         - "租金"应归类为"住房"
+         - "吃饭"应归类为"餐饮"
+         - 所有不明确的支出都应归为"其他支出"
+         - 所有不明确的收入都应归为"其他收入"
       3. 具体名称 (specific_name): 具体的消费项目或收入来源
       4. 日期时间 (datetime): 格式为 YYYY-MM-DD HH:MM:SS，如未指定则使用当前时间
       5. 消费/收入类型 (type): "income"(收入)或"expense"(支出)
@@ -173,7 +187,7 @@ class AIAccountant {
       {"is_accounting": false}
       
       仅返回JSON格式的结果，不要有任何其他解释性文字。
-    `;    
+    `;
     try {
       console.log("正在调用DeepSeek API获取记账信息...");
       const response = await queryDeepseek(prompt);
@@ -229,8 +243,7 @@ class AIAccountant {
         const resultEntries = [];
         
         console.log("处理记账条目数量:", entries.length);
-        
-        // 处理每个条目
+          // 处理每个条目
         for (const entry of entries) {
           // 检查记账必要字段是否存在
           if (!entry.amount || !entry.category) {
@@ -250,6 +263,19 @@ class AIAccountant {
               amount = -amount;
             }
             entry.amount = amount;
+          }
+          
+          // 确保类别在预设类别中
+          if (entry.type === 'income') {
+            if (!this.defaultCategories["收入"].includes(entry.category)) {
+              console.log(`将非预设收入类别 "${entry.category}" 映射为 "其他收入"`);
+              entry.category = "其他收入";
+            }
+          } else {
+            if (!this.defaultCategories["支出"].includes(entry.category)) {
+              console.log(`将非预设支出类别 "${entry.category}" 映射为 "其他支出"`);
+              entry.category = "其他支出";
+            }
           }
           
           resultEntries.push(entry);

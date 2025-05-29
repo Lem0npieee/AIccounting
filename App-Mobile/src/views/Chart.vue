@@ -212,6 +212,10 @@ watch(filterTimeType, () => {
 
 // 组件挂载时获取数据
 onMounted(() => {
+  // 初始化筛选状态为全选
+  filterExpense.value = [...expenseCategories];
+  filterIncome.value = [...incomeCategories];
+
   fetchFilteredData()
 })
 
@@ -558,9 +562,9 @@ const getCategoryIcon = (category) => {
 .chart-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 50px); /* 减去导航栏高度 */
+  height: calc(100vh);
   background-color: #f5f5f5;
-  padding-bottom: 50px; /* 为底部导航栏留出空间 */
+  padding-bottom: 50px; /* 增加滚动页面的下沿空白部分，避免按钮被压缩 */
   position: relative;
 }
 
@@ -618,6 +622,7 @@ const getCategoryIcon = (category) => {
   z-index: 1001;
   overflow-y: auto;
   animation: slideUp 0.3s ease-out;
+  padding-bottom: 80px; /* 给底部按钮留出空间 */
 }
 
 @keyframes slideUp {
@@ -695,18 +700,24 @@ const getCategoryIcon = (category) => {
   font-size: 13px;
 }
 
+
 .filter-actions {
   display: flex;
-  justify-content: space-between;
-  margin-top: 20px;
+  gap: 16px;
+  margin-top: 24px;
+  background: white;
+  padding: 0 0 0 0;
+  box-shadow: none;
+  z-index: 1;
 }
 
 .reset-btn, .confirm-btn {
   flex: 1;
-  padding: 12px 0;
+  padding: 14px 0;
   border-radius: 25px;
   font-size: 16px;
   cursor: pointer;
+  min-width: 0;
 }
 
 .reset-btn {

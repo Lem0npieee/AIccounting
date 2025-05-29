@@ -6,7 +6,7 @@ import json
 class MySQLDataStore:
     """数据库操作类，负责与MySQL数据库的交互"""
 
-    def __init__(self, host="localhost", port=3306, user="root", password="1234", db="data"):
+    def __init__(self, host="localhost", port=3306, user="root", password="512560", db="data"):
         """初始化数据库连接"""
         self.db_config = {
             'host': host,
