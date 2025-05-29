@@ -157,21 +157,20 @@
           <!-- 坐标轴 -->
           <svg width="100%" height="220" viewBox="0 0 420 220">
             <!-- Y轴 -->
-            <line x1="40" y1="20" x2="40" y2="200" stroke="#dcdfe6" stroke-width="2" />
-            <!-- X轴 -->
+            <line x1="40" y1="20" x2="40" y2="200" stroke="#dcdfe6" stroke-width="2" />            <!-- X轴 -->
             <line x1="40" y1="200" x2="400" y2="200" stroke="#dcdfe6" stroke-width="2" />
             <!-- 收入折线 -->
-            <polyline :points="getLinePoints()" fill="none" stroke="#67C23A" stroke-width="3" />
+            <polyline :points="getLinePoints('income')" fill="none" stroke="#67C23A" stroke-width="3" />
             <!-- 支出折线 -->
-            <polyline :points="getLinePoints()" fill="none" stroke="#F56C6C" stroke-width="3" />
+            <polyline :points="getLinePoints('expense')" fill="none" stroke="#F56C6C" stroke-width="3" />
             <!-- 收入点 -->
-            <circle v-for="(pt, idx) in getLineDots()" :key="'income'+idx" :cx="pt.x" :cy="pt.y" r="4" fill="#67C23A" />
+            <circle v-for="(pt, idx) in getLineDots('income')" :key="'income'+idx" :cx="pt.x" :cy="pt.y" r="4" fill="#67C23A" />
             <!-- 支出点 -->
-            <circle v-for="(pt, idx) in getLineDots()" :key="'expense'+idx" :cx="pt.x" :cy="pt.y" r="4" fill="#F56C6C" />
+            <circle v-for="(pt, idx) in getLineDots('expense')" :key="'expense'+idx" :cx="pt.x" :cy="pt.y" r="4" fill="#F56C6C" />
             <!-- 日期标签 -->
-            <text v-for="(day, idx) in getTrendXAxisLabels()" :key="'date'+idx" :x="40 + idx * (360 / (getTrendXAxisLabels().length - 1 || 1))" y="215" text-anchor="middle" font-size="12" fill="#909399">{{ day }}</text>
+            <text v-for="(day, idx) in getTrendLineXAxisLabels()" :key="'date'+idx" :x="40 + idx * (360 / (getTrendLineXAxisLabels().length - 1 || 1))" y="215" text-anchor="middle" font-size="12" fill="#909399">{{ day }}</text>
             <!-- 金额刻度 -->
-            <text v-for="tick in 5" :key="'tick'+tick" x="30" :y="200 - (tick-1)*45" text-anchor="end" font-size="12" fill="#909399">{{ Math.round(getMaxAmount() * (tick-1)/4) }}</text>
+            <text v-for="tick in 5" :key="'tick'+tick" x="30" :y="200 - (tick-1)*45" text-anchor="end" font-size="12" fill="#909399">{{ Math.round(getMaxTrendValue() * (tick-1)/4) }}</text>
           </svg>
           <!-- 图例 -->
           <div class="chart-legend">
@@ -190,7 +189,7 @@
       <!-- 新增条形图 -->
       <div class="bar-chart-placeholder">
         <div class="bar-chart">
-          <div class="chart-title">每日收支</div>
+          <div class="chart-title">收支明细</div>
           <div class="chart-bars-horizontal">
             <div class="chart-bar-horizontal" v-for="(day, index) in getTrendXAxisLabels()" :key="index">
               <div class="day-label">{{ day }}</div>
@@ -198,7 +197,10 @@
                 <div class="bar-item">
                   <div class="bar-label">收支</div>
                   <div class="bar-container">
-                    <div class="income-bar-horizontal" :style="{ width: getBarWidthByTrend(index) + '%' }"></div>
+                    <div 
+                      :class="getDayAmountByTrendValue(index) >= 0 ? 'income-bar-horizontal' : 'expense-bar-horizontal'"
+                      :style="{ width: Math.abs(getBarWidthByTrend(index)) + '%' }"
+                    ></div>
                     <div class="bar-value">{{ getDayAmountByTrend(index) }}</div>
                   </div>
                 </div>
@@ -234,10 +236,11 @@ export default {
       activeTab: 'expense',
       apiBaseUrl: 'http://localhost:5000',
       // 后端数据
-      summary: { income: 0, expense: 0, balance: 0 },
-      incomeCategoryData: [],
+      summary: { income: 0, expense: 0, balance: 0 },      incomeCategoryData: [],
       expenseCategoryData: [],
-      trendData: [],
+      trendData: [],           // 净收入数据（原有）
+      incomeTrendData: [],     // 新增：纯收入数据
+      expenseTrendData: [],    // 新增：纯支出数据
       ledgerEntries: [],
       isLoading: false,
       error: null
@@ -302,31 +305,53 @@ export default {
           startDate = `${this.currentYear}-01-01`;
           endDate = `${this.currentYear}-12-31`;
         }
-        console.log('fetchChartData - 请求参数:', {
+
+        const requestParams = {
           income_categories: this.filterIncome,
           expense_categories: this.filterExpense,
           start_date: startDate,
-          end_date: endDate
+          end_date: endDate,
+          time_unit: this.filterTimeType === 'week' ? 'day_of_week' : 
+                     this.filterTimeType === 'month' ? 'day_of_month' : 'month_of_year'
+        };
+
+        console.log('发送请求的参数:', {
+          url: `${this.apiBaseUrl}/get_chart_data_from_filters`,
+          params: requestParams
         });
-        // 请求后端
-        const response = await axios.post(`${this.apiBaseUrl}/get_chart_data_from_filters`, {
-          income_categories: this.filterIncome,
-          expense_categories: this.filterExpense,
-          start_date: startDate,
-          end_date: endDate
+
+        const response = await axios.post(`${this.apiBaseUrl}/get_chart_data_from_filters`, requestParams);
+        
+        console.log('后端返回的完整数据:', response.data);
+        console.log('后端返回的趋势数据:', {
+          trendData: response.data.daily_net_income_series,
+          incomeTrendData: response.data.daily_income_series,
+          expenseTrendData: response.data.daily_expense_series
         });
-        console.log('fetchChartData - 后端返回数据:', response.data);
+
         if (response.data.error) throw new Error(response.data.error);
-        // 汇总
+        
+        // 更新数据
         this.summary = {
           income: response.data.summary_statistics.total_income,
           expense: response.data.summary_statistics.total_expense,
           balance: response.data.summary_statistics.net_income
         };
+
         this.incomeCategoryData = response.data.income_category_distribution;
         this.expenseCategoryData = response.data.expense_category_distribution;
         this.trendData = response.data.daily_net_income_series;
-        console.log('fetchChartData - trendData:', this.trendData);
+        this.incomeTrendData = response.data.daily_income_series || [];
+        this.expenseTrendData = response.data.daily_expense_series || [];
+
+        // 数据更新后的状态
+        console.log('数据更新后的状态:', {
+          summary: this.summary,
+          trendData: this.trendData,
+          incomeTrendData: this.incomeTrendData,
+          expenseTrendData: this.expenseTrendData
+        });
+
         // 合并所有明细
         this.ledgerEntries = [
           ...response.data.filtered_income_transactions.map(e => ({ ...e, amount: Math.abs(e.amount), categoryTag: e.category, specificName: e.specific_name, time: e.datetime })),
@@ -512,8 +537,6 @@ export default {
     },
     // 获取趋势图X轴标签
     getTrendXAxisLabels() {
-      console.log('getTrendXAxisLabels - trendData:', this.trendData);
-      console.log('getTrendXAxisLabels - filterTimeType:', this.filterTimeType);
       if (!this.trendData || !this.trendData.length) return [];
       
       if (this.filterTimeType === 'week') {
@@ -525,61 +548,100 @@ export default {
       }
       return [];
     },
-    // 获取趋势数据
-    getTrendSeriesData() {
-      console.log('getTrendSeriesData - trendData:', this.trendData);
+    // 获取折线图X轴标签（新增方法）
+    getTrendLineXAxisLabels() {
       if (!this.trendData || !this.trendData.length) return [];
-      return this.trendData.map(item => item.value || 0);
+      
+      if (this.filterTimeType === 'week') {
+        return this.trendData.map(item => item.day_of_week || '');
+      } else if (this.filterTimeType === 'month') {
+        return this.trendData.map((item, idx) => {
+          const day = parseInt((item.day || (idx + 1)).toString());
+          return [5, 10, 15, 20, 25, 30].includes(day) ? `${day}日` : '';
+        });
+      } else if (this.filterTimeType === 'year') {
+        return this.trendData.map(item => item.month_of_year || '');
+      }
+      return [];
+    },
+    // 获取趋势图的最大值，用于统一Y轴刻度
+    getMaxTrendValue() {
+      const netData = this.getTrendSeriesData('net');
+      const incomeData = this.getTrendSeriesData('income');
+      const expenseData = this.getTrendSeriesData('expense');
+      
+      const allValues = [...netData, ...incomeData, ...expenseData];
+      const max = Math.max(...allValues);
+      return Math.max(max, 100); // 最小100，避免全为0
+    },
+    
+    // 获取趋势数据
+    getTrendSeriesData(type = 'net') {
+      let dataSource = [];
+      if (type === 'income') {
+        dataSource = this.incomeTrendData;
+      } else if (type === 'expense') {
+        dataSource = this.expenseTrendData;
+      } else {
+        dataSource = this.trendData; // 默认净收入
+      }
+      console.log(`getTrendSeriesData(${type}) - dataSource:`, dataSource);
+      if (!dataSource || !dataSource.length) return [];
+      return dataSource.map(item => item.value || 0);
     },
     // 生成polyline的points字符串
-    getLinePoints() {
-      const data = this.getTrendSeriesData();
-      console.log('getLinePoints - series data:', data);
+    getLinePoints(type = 'net') {
+      const data = this.getTrendSeriesData(type);
+      console.log(`getLinePoints(${type}) - series data:`, data);
       if (!data.length) return '';
       
-      const max = Math.max(...data, 100);
+      const max = this.getMaxTrendValue();
       const count = data.length;
       const points = data.map((val, idx) => {
         const x = 40 + idx * (360 / (count - 1));
         const y = 200 - (val / max) * 160;
         return `${x},${y}`;
       }).join(' ');
-      console.log('getLinePoints - points:', points);
+      console.log(`getLinePoints(${type}) - points:`, points);
       return points;
     },
     // 生成每个点的坐标数组
-    getLineDots() {
-      const data = this.getTrendSeriesData();
-      console.log('getLineDots - series data:', data);
+    getLineDots(type = 'net') {
+      const data = this.getTrendSeriesData(type);
+      console.log(`getLineDots(${type}) - series data:`, data);
       if (!data.length) return [];
       
-      const max = Math.max(...data, 100);
+      const max = this.getMaxTrendValue();
       const count = data.length;
       const dots = data.map((val, idx) => {
         const x = 40 + idx * (360 / (count - 1));
         const y = 200 - (val / max) * 160;
         return { x, y };
       });
-      console.log('getLineDots - dots:', dots);
+      console.log(`getLineDots(${type}) - dots:`, dots);
       return dots;
     },
-    // 适配条形图X轴和数据
-    getBarWidthByTrend(idx) {
-      console.log('getBarWidthByTrend - trendData:', this.trendData);
-      console.log('getBarWidthByTrend - idx:', idx);
+    // 添加新方法获取数值
+    getDayAmountByTrendValue(idx) {
       const val = this.trendData[idx] ? this.trendData[idx].value || 0 : 0;
-      const max = Math.max(...this.getTrendSeriesData(), 100);
-      const width = Math.min((val / max) * 100, 100);
-      console.log('getBarWidthByTrend - width:', width);
+      return val;
+    },
+    
+    // 修改获取条形图宽度的方法
+    getBarWidthByTrend(idx) {
+      const val = this.trendData[idx] ? this.trendData[idx].value || 0 : 0;
+      const maxAbsValue = Math.max(
+        ...this.trendData.map(item => Math.abs(item.value || 0)),
+        100
+      );
+      const width = (Math.abs(val) / maxAbsValue) * 100;
       return width;
     },
+    
+    // 修改获取金额显示的方法
     getDayAmountByTrend(idx) {
-      console.log('getDayAmountByTrend - trendData:', this.trendData);
-      console.log('getDayAmountByTrend - idx:', idx);
       const val = this.trendData[idx] ? this.trendData[idx].value || 0 : 0;
-      const amount = `¥${val.toFixed(1)}`;
-      console.log('getDayAmountByTrend - amount:', amount);
-      return amount;
+      return `¥${val.toFixed(1)}`;
     },
   }
 }
@@ -588,7 +650,7 @@ export default {
 <style scoped>
 .chart-container {
   padding: 15px;
-  padding-bottom: 65px;
+  padding-bottom: 150px;
   height: 100%;
   background-color: #f5f7fa;
 }
@@ -843,6 +905,7 @@ export default {
 .bar-chart-placeholder {
   margin-top: 20px;
   padding: 20px 0;
+  padding-bottom: 30px;
   background-color: #fff;
   border-radius: 10px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -910,24 +973,21 @@ export default {
   align-items: center;
 }
 
-.expense-bar-horizontal {
+.expense-bar-horizontal, .income-bar-horizontal {
   position: absolute;
   left: 0;
   top: 0;
   height: 100%;
-  background-color: #F56C6C;
   border-radius: 10px 0 0 10px;
   transition: width 0.3s ease;
 }
 
+.expense-bar-horizontal {
+  background-color: #F56C6C;
+}
+
 .income-bar-horizontal {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
   background-color: #67C23A;
-  border-radius: 10px 0 0 10px;
-  transition: width 0.3s ease;
 }
 
 .bar-value {
