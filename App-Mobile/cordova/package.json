@@ -1,0 +1,27 @@
+{
+  "name": "AIccounting",
+  "displayName": "AIccounting",
+  "version": "1.0.0",
+  "description": "AI记账移动应用",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ecosystem:cordova"
+  ],
+  "author": "AIccounting Team",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "cordova-android": "^10.1.2",
+    "cordova-sqlite-storage": "^6.1.0"
+  },
+  "cordova": {
+    "plugins": {
+      "cordova-sqlite-storage": {}
+    },
+    "platforms": [
+      "android"
+    ]
+  }
+}

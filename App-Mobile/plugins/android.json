@@ -1,0 +1,15 @@
+{
+  "prepare_queue": {
+    "installed": [],
+    "uninstalled": []
+  },
+  "config_munge": {
+    "files": {}
+  },
+  "installed_plugins": {
+    "cordova-sqlite-storage": {
+      "PACKAGE_NAME": "com.aiccounting.mobile"
+    }
+  },
+  "dependent_plugins": {}
+}
