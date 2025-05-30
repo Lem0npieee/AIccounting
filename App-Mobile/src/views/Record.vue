@@ -23,12 +23,16 @@
           </div>
         </div>
         
-        <!-- 动态消息列表 -->
-        <div 
+        <!-- 动态消息列表 -->        <div 
           v-for="(message, index) in messages" 
           :key="index" 
           :class="['message', message.isUser ? 'user-message' : 'ai-message', message.type === 'ledger' ? 'ledger-message' : '']"
         >
+          <!-- 使用小分隔符标记新的对话交互 -->
+          <div v-if="index > 0 && messages[index-1].isUser && !message.isUser && message.type !== 'ledger'" class="conversation-divider">
+            <span class="divider-line"></span>
+          </div>
+          
           <template v-if="message.type === 'ledger' && message.ledgerEntry">
             <div class="ledger-card">
               <div class="ledger-header">
@@ -69,6 +73,14 @@
       
       <!-- 输入区域 -->
       <div class="input-container">
+        <button 
+          class="clear-button" 
+          @click="clearHistory" 
+          title="清除历史记录"
+          :disabled="isAiTyping || aiStarting || !aiStarted || messages.length === 0"
+        >
+          🗑️
+        </button>
         <textarea 
           ref="inputBox"
           v-model="userInput" 
@@ -103,7 +115,7 @@ const messagesContainer = ref(null)
 const inputBox = ref(null)
 
 // 监听消息列表，保存到localStorage
-watch(messages.value, (newVal) => {
+watch(messages, (newVal) => {
   localStorage.setItem('ai_accounting_messages', JSON.stringify(newVal))
 }, { deep: true })
 
@@ -114,9 +126,26 @@ onMounted(() => {
     const savedMessages = localStorage.getItem('ai_accounting_messages')
     if (savedMessages) {
       messages.value = JSON.parse(savedMessages)
+    } else {
+      // 如果没有历史消息，则显示欢迎消息
+      messages.value = [
+        {
+          content: `<b>🤖 欢迎使用AI记账助手！</b><br>👉 您可以直接输入收支情况，例如：'今天午饭花了35元'<br>👉 或者查询报表，例如：'帮我分析本月的消费情况'<br>👉 也可以与我闲聊，我会以助手的身份回答您的问题~<br>`,
+          isUser: false,
+          timestamp: new Date().toISOString()
+        }
+      ]
     }
   } catch (e) {
     console.error('加载历史消息失败', e)
+    // 出错时也显示欢迎消息
+    messages.value = [
+      {
+        content: `<b>🤖 欢迎使用AI记账助手！</b><br>👉 您可以直接输入收支情况，例如：'今天午饭花了35元'<br>👉 或者查询报表，例如：'帮我分析本月的消费情况'<br>👉 也可以与我闲聊，我会以助手的身份回答您的问题~<br>`,
+        isUser: false,
+        timestamp: new Date().toISOString()
+      }
+    ]
   }
 
   // 自动滚动到底部
@@ -212,24 +241,67 @@ const sendMessage = async () => {
         content: response,
         isUser: false,
         timestamp: new Date().toISOString()
-      })
-    } else if (response && response.replyText) {
-      // 记账条目回复
+      })    } else if (response && response.replyText) {
+      // 添加AI的文字回复消息
       messages.value.push({
         content: response.replyText,
         isUser: false,
         timestamp: new Date().toISOString()
-      })
+      });
       
-      // 如果有记账条目，添加记账卡片
+      // 如果有记账条目
       if (response.ledgerEntry) {
-        messages.value.push({
+        // 确保ledgerEntry始终是数组
+        const entries = Array.isArray(response.ledgerEntry) ? response.ledgerEntry : [response.ledgerEntry];
+        
+        // 创建新的记账卡片消息
+        const newLedgerMessages = entries.map(entry => ({
           type: 'ledger',
-          ledgerEntry: response.ledgerEntry,
+          ledgerEntry: entry,
           isUser: false,
           timestamp: new Date().toISOString()
-        })
+        }));
+        
+        // 将所有非记账卡片消息保存到新数组
+        const nonLedgerMessages = messages.value.filter(msg => msg.type !== 'ledger');
+        
+        // 将所有记账卡片消息保存到新数组
+        const oldLedgerMessages = messages.value.filter(msg => msg.type === 'ledger');
+        
+        // 重建消息数组：
+        // 1. 首先放入非记账卡片消息中的第一个欢迎消息（如果存在）
+        // 2. 然后放入新的记账卡片消息
+        // 3. 然后放入旧的记账卡片消息
+        // 4. 最后放入除欢迎消息外的其他所有非记账卡片消息
+        
+        // 清空当前消息数组
+        messages.value = [];
+        
+        // 寻找欢迎消息
+        const welcomeMessageIndex = nonLedgerMessages.findIndex(msg => 
+          !msg.isUser && msg.content && msg.content.includes('欢迎使用AI记账助手'));
+        
+        // 如果有欢迎消息，先添加欢迎消息
+        if (welcomeMessageIndex !== -1) {
+          messages.value.push(nonLedgerMessages[welcomeMessageIndex]);
+          
+          // 从非记账消息数组中移除欢迎消息
+          nonLedgerMessages.splice(welcomeMessageIndex, 1);
+        }
+        
+        // 添加新的记账卡片（置于最顶部）
+        messages.value.push(...newLedgerMessages);
+        
+        // 添加旧的记账卡片
+        messages.value.push(...oldLedgerMessages);
+        
+        // 添加其余所有非记账卡片消息
+        messages.value.push(...nonLedgerMessages);
       }
+      
+      // 滚动到底部，确保看到新添加的记录
+      setTimeout(scrollToBottom, 100);
+    }
     }
     
     // 滚动到底部
@@ -294,6 +366,20 @@ const getCategoryIcon = (category) => {
 const scrollToBottom = () => {
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  }
+}
+
+// 清除历史记录
+const clearHistory = () => {
+  if (confirm('确定要清除所有聊天记录吗？')) {
+    messages.value = [
+      {
+        content: `<b>🤖 欢迎使用AI记账助手！</b><br>👉 您可以直接输入收支情况，例如：'今天午饭花了35元'<br>👉 或者查询报表，例如：'帮我分析本月的消费情况'<br>👉 也可以与我闲聊，我会以助手的身份回答您的问题~<br>`,
+        isUser: false,
+        timestamp: new Date().toISOString()
+      }
+    ]
+    localStorage.setItem('ai_accounting_messages', JSON.stringify(messages.value))
   }
 }
 </script>
@@ -371,6 +457,30 @@ const scrollToBottom = () => {
   padding: 12px;
   border-top: 1px solid #e0e0e0;
   background-color: white;
+}
+
+.clear-button {
+  height: 44px;
+  width: 44px;
+  border-radius: 22px;
+  background-color: #f5f5f5;
+  color: #666;
+  border: 1px solid #e0e0e0;
+  font-size: 18px;
+  cursor: pointer;
+  margin-right: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.clear-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clear-button:hover:not(:disabled) {
+  background-color: #e0e0e0;
 }
 
 textarea {
@@ -484,6 +594,7 @@ textarea {
   max-width: 90%;
   background: none;
   padding: 0;
+  margin-bottom: 4px; /* 减小相邻记账卡片之间的距离 */
 }
 
 .ledger-card {
@@ -492,6 +603,15 @@ textarea {
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   overflow: hidden;
   border: 1px solid #e0e0e0;
+  position: relative;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  transition: transform 0.2s ease;
+}
+
+.ledger-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 
 .ledger-header {
@@ -546,5 +666,20 @@ textarea {
 
 .ledger-amount .income {
   color: #4caf50;
+}
+
+/* 对话分隔符样式 */
+.conversation-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 10px 0;
+  width: 100%;
+}
+
+.divider-line {
+  height: 1px;
+  width: 70%;
+  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1), transparent);
 }
 </style>

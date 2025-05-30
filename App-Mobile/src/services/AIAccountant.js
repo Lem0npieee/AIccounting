@@ -571,21 +571,17 @@ class AIAccountant {
         
         if (successCount > 0) {
           // 生成回复，告知用户已成功添加多条记账条目
-          const aiReply = await this._generateAiResponse(extractedInfo, `添加了${successCount}条记录`);
-          // 返回第一个条目的结构化信息（如需全部可扩展）
-          const firstEntry = extractedInfo[0];
-          let ledgerEntry = null;
-          if (firstEntry) {
-            ledgerEntry = {
-              amount: firstEntry.amount,
-              categoryTag: firstEntry.category || "其他",
-              specificName: firstEntry.specific_name || "",
-              time: firstEntry.datetime
-            };
-          }
+          const aiReply = await this._generateAiResponse(extractedInfo, `添加了${successCount}条记录`);          // 将所有条目转换为结构化信息
+          const ledgerEntries = extractedInfo.map(entry => ({
+            amount: entry.amount,
+            categoryTag: entry.category || "其他",
+            specificName: entry.specific_name || "",
+            time: entry.datetime
+          }));
+          
           return {
             replyText: aiReply,
-            ledgerEntry: ledgerEntry
+            ledgerEntry: ledgerEntries
           };
         } else {
           return "很抱歉，记账时出现了问题。请稍后再试。";
@@ -593,8 +589,7 @@ class AIAccountant {
       } else {
         // 添加单条记账条目
         const entryId = await this.dataStore.addEntry(extractedInfo);
-        if (entryId) {
-          const aiReply = await this._generateAiResponse(extractedInfo, "添加");
+        if (entryId) {          const aiReply = await this._generateAiResponse(extractedInfo, "添加");
           const ledgerEntry = {
             amount: extractedInfo.amount,
             categoryTag: extractedInfo.category || "其他",
@@ -603,7 +598,7 @@ class AIAccountant {
           };
           return {
             replyText: aiReply,
-            ledgerEntry: ledgerEntry
+            ledgerEntry: [ledgerEntry] // 转换为数组格式保持一致性
           };
         } else {
           return "很抱歉，记账时出现了问题。请稍后再试。";

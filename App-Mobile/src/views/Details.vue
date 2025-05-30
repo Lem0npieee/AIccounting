@@ -55,11 +55,26 @@
               <span class="income" v-if="group.income > 0">收入: ¥{{ group.income.toFixed(2) }}</span>
               <span class="expense" v-if="group.expense > 0">支出: ¥{{ group.expense.toFixed(2) }}</span>
             </div>
-          </div>
-
-          <!-- 该日期的明细条目 -->
+          </div>          <!-- 该日期的明细条目 -->
           <div class="entry-list">
-            <div v-for="entry in group.entries" :key="entry.id" class="entry-item">
+            <div 
+              v-for="(entry, index) in group.entries.slice().reverse()" 
+              :key="entry.id" 
+              class="entry-item"
+              :class="{
+                'same-conversation': index > 0 && 
+                  group.entries.slice().reverse()[index-1].datetime.split(' ')[1].substr(0, 5) === 
+                  entry.datetime.split(' ')[1].substr(0, 5)
+              }"
+            >
+              <!-- 不同对话轮次的分隔线 -->
+              <div 
+                v-if="index > 0 && 
+                  group.entries.slice().reverse()[index-1].datetime.split(' ')[1].substr(0, 5) !== 
+                  entry.datetime.split(' ')[1].substr(0, 5)" 
+                class="conversation-separator">
+              </div>
+
               <div class="entry-icon" :class="getCategoryClass(entry.category)">
                 {{ getCategoryIcon(entry.category) }}
               </div>
@@ -179,6 +194,9 @@ const groupEntriesByDate = (transactions) => {
   const groups = {}
   const today = new Date().toISOString().split('T')[0]
   
+  // 先将交易按对话轮次（时间戳）分组
+  const conversationGroups = {}
+  
   // 按日期分组
   for (const transaction of transactions) {
     // 提取日期部分
@@ -197,12 +215,21 @@ const groupEntriesByDate = (transactions) => {
         isToday: date === today,
         income: 0,
         expense: 0,
-        entries: []
+        entries: [],
+        conversationGroups: {} // 存储每个对话轮次的条目
       }
     }
     
-    // 添加交易到对应日期组
-    groups[date].entries.push(transaction)
+    // 使用datetime作为对话标识（在实际场景中可能需要更精确的会话ID）
+    // 提取小时分钟秒，作为对话轮次的标识
+    const timeKey = dateTime.split(' ')[1].substr(0, 5); // 取HH:MM作为会话ID
+    
+    if (!groups[date].conversationGroups[timeKey]) {
+      groups[date].conversationGroups[timeKey] = [];
+    }
+    
+    // 添加交易到对应日期和对话组
+    groups[date].conversationGroups[timeKey].push(transaction);
     
     // 累计收入或支出
     const amount = parseFloat(transaction.amount)
@@ -210,6 +237,31 @@ const groupEntriesByDate = (transactions) => {
       groups[date].income += amount
     } else {
       groups[date].expense += Math.abs(amount)
+    }
+  }
+  
+  // 按对话轮次处理每日条目
+  for (const dateGroup of Object.values(groups)) {
+    // 按时间从新到旧排序对话轮次
+    const sortedTimeKeys = Object.keys(dateGroup.conversationGroups).sort((a, b) => {
+      return b.localeCompare(a); // 从晚到早
+    });
+    
+    // 清空原始entries数组，以便重新填充
+    dateGroup.entries = [];
+    
+    // 遍历每个对话轮次
+    for (const timeKey of sortedTimeKeys) {
+      const conversationEntries = dateGroup.conversationGroups[timeKey];
+      
+      // 对同一轮对话中的条目按ID排序（ID越大越晚）
+      // 注意：这里我们假设ID越大表示越晚添加
+      const sortedEntries = [...conversationEntries].sort((a, b) => {
+        return a.id - b.id; // 从早到晚，在模板中会反向显示
+      });
+      
+      // 将排序后的条目添加到entries数组
+      dateGroup.entries.push(...sortedEntries);
     }
   }
   
@@ -391,6 +443,7 @@ const getCategoryClass = (category) => {
   align-items: center;
   padding: 16px;
   border-bottom: 1px solid #f0f0f0;
+  position: relative;
 }
 
 .entry-item:last-child {
@@ -456,5 +509,23 @@ const getCategoryClass = (category) => {
 .no-data {
   color: #999;
   line-height: 1.5;
+}
+
+/* 不同轮次对话分隔线 */
+.conversation-separator {
+  height: 5px;
+  background-color: #f5f5f5;
+  margin: 0;
+}
+
+/* 同一轮对话的条目连接线 */
+.entry-item.same-conversation:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 20px;
+  bottom: -1px;
+  width: 1px;
+  height: 1px;
+  background-color: #e0e0e0;
 }
 </style>
