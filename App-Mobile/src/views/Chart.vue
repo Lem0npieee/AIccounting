@@ -280,15 +280,17 @@ const getFilterDateRange = () => {
     // 当年的1月1日到12月31日
     startDate = new Date(now.getFullYear(), 0, 1)
     endDate = new Date(now.getFullYear(), 11, 31)
-  }
-  
-  // 设置时间为当天的开始和结束
+  }  // 设置时间为当天的开始和结束
   startDate.setHours(0, 0, 0, 0)
   endDate.setHours(23, 59, 59, 999)
   
+  // 使用本地日期格式，避免时区问题
+  const startDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+  const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+  
   return {
-    startDateStr: startDate.toISOString().split('T')[0],
-    endDateStr: endDate.toISOString().split('T')[0],
+    startDateStr,
+    endDateStr,
     timeUnit: filterTimeType.value
   }
 }

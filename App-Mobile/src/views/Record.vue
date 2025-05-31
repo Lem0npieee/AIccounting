@@ -254,54 +254,19 @@ const sendMessage = async () => {
         // 确保ledgerEntry始终是数组
         const entries = Array.isArray(response.ledgerEntry) ? response.ledgerEntry : [response.ledgerEntry];
         
-        // 创建新的记账卡片消息
-        const newLedgerMessages = entries.map(entry => ({
-          type: 'ledger',
-          ledgerEntry: entry,
-          isUser: false,
-          timestamp: new Date().toISOString()
-        }));
-        
-        // 将所有非记账卡片消息保存到新数组
-        const nonLedgerMessages = messages.value.filter(msg => msg.type !== 'ledger');
-        
-        // 将所有记账卡片消息保存到新数组
-        const oldLedgerMessages = messages.value.filter(msg => msg.type === 'ledger');
-        
-        // 重建消息数组：
-        // 1. 首先放入非记账卡片消息中的第一个欢迎消息（如果存在）
-        // 2. 然后放入新的记账卡片消息
-        // 3. 然后放入旧的记账卡片消息
-        // 4. 最后放入除欢迎消息外的其他所有非记账卡片消息
-        
-        // 清空当前消息数组
-        messages.value = [];
-        
-        // 寻找欢迎消息
-        const welcomeMessageIndex = nonLedgerMessages.findIndex(msg => 
-          !msg.isUser && msg.content && msg.content.includes('欢迎使用AI记账助手'));
-        
-        // 如果有欢迎消息，先添加欢迎消息
-        if (welcomeMessageIndex !== -1) {
-          messages.value.push(nonLedgerMessages[welcomeMessageIndex]);
-          
-          // 从非记账消息数组中移除欢迎消息
-          nonLedgerMessages.splice(welcomeMessageIndex, 1);
+        // 简单地追加记账卡片到消息列表末尾
+        for (const entry of entries) {
+          messages.value.push({
+            type: 'ledger',
+            ledgerEntry: entry,
+            isUser: false,
+            timestamp: new Date().toISOString()
+          });
         }
-        
-        // 添加新的记账卡片（置于最顶部）
-        messages.value.push(...newLedgerMessages);
-        
-        // 添加旧的记账卡片
-        messages.value.push(...oldLedgerMessages);
-        
-        // 添加其余所有非记账卡片消息
-        messages.value.push(...nonLedgerMessages);
       }
       
       // 滚动到底部，确保看到新添加的记录
       setTimeout(scrollToBottom, 100);
-    }
     }
     
     // 滚动到底部

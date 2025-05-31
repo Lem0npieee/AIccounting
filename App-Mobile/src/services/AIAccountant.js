@@ -204,7 +204,7 @@ class AIAccountant {
             "amount": userMessage.includes("收入") ? 100 : -100,
             "category": userMessage.includes("收入") ? "其他收入" : "其他支出",
             "specific_name": "模拟记录",
-            "datetime": new Date().toISOString().replace('T', ' ').substring(0, 19),
+            "datetime": this._getLocalDateTimeString(),
             "type": userMessage.includes("收入") ? "income" : "expense"
           }];
         } else {
@@ -250,9 +250,15 @@ class AIAccountant {
             console.log("跳过缺少必要字段的条目:", entry);
             continue;
           }
-          
-          // 无论用户输入什么，始终使用当前时间
-          entry.datetime = new Date().toISOString().replace('T', ' ').substring(0, 19);
+            // 无论用户输入什么，始终使用当前本地时间
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          const hours = String(now.getHours()).padStart(2, '0');
+          const minutes = String(now.getMinutes()).padStart(2, '0');
+          const seconds = String(now.getSeconds()).padStart(2, '0');
+          entry.datetime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
           
           // 确保amount为数值并根据type调整正负
           if (entry.amount !== undefined) {

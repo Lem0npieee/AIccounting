@@ -16,7 +16,7 @@
     "chart.js": "^4.4.0",
     "cordova-sqlite-storage": "^6.1.0",
     "echarts": "^5.4.3",
-    "openai": "^4.103.0",
+    "localforage": "^1.10.0",
     "vue": "^3.3.8",
     "vue-chartjs": "^5.2.0",
     "vue-router": "^4.2.5"

@@ -58,29 +58,17 @@
           </div>          <!-- 该日期的明细条目 -->
           <div class="entry-list">
             <div 
-              v-for="(entry, index) in group.entries.slice().reverse()" 
+              v-for="entry in group.entries" 
               :key="entry.id" 
               class="entry-item"
-              :class="{
-                'same-conversation': index > 0 && 
-                  group.entries.slice().reverse()[index-1].datetime.split(' ')[1].substr(0, 5) === 
-                  entry.datetime.split(' ')[1].substr(0, 5)
-              }"
             >
-              <!-- 不同对话轮次的分隔线 -->
-              <div 
-                v-if="index > 0 && 
-                  group.entries.slice().reverse()[index-1].datetime.split(' ')[1].substr(0, 5) !== 
-                  entry.datetime.split(' ')[1].substr(0, 5)" 
-                class="conversation-separator">
-              </div>
-
               <div class="entry-icon" :class="getCategoryClass(entry.category)">
                 {{ getCategoryIcon(entry.category) }}
               </div>
               <div class="entry-info">
                 <div class="entry-category">{{ entry.category }}</div>
                 <div class="entry-description">{{ entry.specific_name || '无描述' }}</div>
+                <div class="entry-time">{{ formatEntryTime(entry.datetime) }}</div>
               </div>
               <div class="entry-amount" :class="{ 'income': entry.type === 'income' }">
                 {{ entry.type === 'income' ? '+' : '-' }}¥{{ Math.abs(parseFloat(entry.amount)).toFixed(2) }}
@@ -151,12 +139,17 @@ const fetchMonthlyData = async () => {
   error.value = null
   
   try {
-    // 设置查询的开始日期和结束日期
-    const startDate = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-01`
+    console.log(`正在获取 ${currentYear.value}年${currentMonth.value}月的数据`);
     
-    // 计算月的最后一天
-    const lastDay = new Date(currentYear.value, currentMonth.value, 0).getDate()
-    const endDate = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${lastDay}`
+    // 创建月份的开始日期和结束日期
+    const startDateObj = new Date(currentYear.value, currentMonth.value - 1, 1);
+    const endDateObj = new Date(currentYear.value, currentMonth.value, 0); // 月末
+    
+    // 使用本地日期格式，避免时区问题
+    const startDate = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, '0')}-${String(startDateObj.getDate()).padStart(2, '0')}`;
+    const endDate = `${endDateObj.getFullYear()}-${String(endDateObj.getMonth() + 1).padStart(2, '0')}-${String(endDateObj.getDate()).padStart(2, '0')}`;
+    
+    console.log(`查询日期范围: ${startDate} 至 ${endDate}`);
     
     // 查询交易列表
     const transactions = await ApiService.getFilteredTransactionList({
@@ -192,16 +185,18 @@ const fetchMonthlyData = async () => {
 // 按日期分组交易
 const groupEntriesByDate = (transactions) => {
   const groups = {}
-  const today = new Date().toISOString().split('T')[0]
-  
-  // 先将交易按对话轮次（时间戳）分组
-  const conversationGroups = {}
+  // 使用本地日期格式，避免时区问题
+  const todayDate = new Date()
+  const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`
   
   // 按日期分组
   for (const transaction of transactions) {
     // 提取日期部分
-    const dateTime = transaction.datetime
-    const date = dateTime.split(' ')[0]
+    const dateTime = transaction.datetime || '';
+    // 处理datetime可能的不同格式 (ISO格式或文本格式)
+    const date = dateTime.includes('T') 
+      ? dateTime.split('T')[0]  // 处理ISO格式 (YYYY-MM-DDThh:mm:ss)
+      : dateTime.split(' ')[0]; // 处理文本格式 (YYYY-MM-DD hh:mm:ss)
     
     if (!groups[date]) {
       // 计算星期几
@@ -215,21 +210,12 @@ const groupEntriesByDate = (transactions) => {
         isToday: date === today,
         income: 0,
         expense: 0,
-        entries: [],
-        conversationGroups: {} // 存储每个对话轮次的条目
+        entries: []
       }
     }
     
-    // 使用datetime作为对话标识（在实际场景中可能需要更精确的会话ID）
-    // 提取小时分钟秒，作为对话轮次的标识
-    const timeKey = dateTime.split(' ')[1].substr(0, 5); // 取HH:MM作为会话ID
-    
-    if (!groups[date].conversationGroups[timeKey]) {
-      groups[date].conversationGroups[timeKey] = [];
-    }
-    
-    // 添加交易到对应日期和对话组
-    groups[date].conversationGroups[timeKey].push(transaction);
+    // 添加交易到对应日期组
+    groups[date].entries.push(transaction)
     
     // 累计收入或支出
     const amount = parseFloat(transaction.amount)
@@ -240,35 +226,39 @@ const groupEntriesByDate = (transactions) => {
     }
   }
   
-  // 按对话轮次处理每日条目
-  for (const dateGroup of Object.values(groups)) {
-    // 按时间从新到旧排序对话轮次
-    const sortedTimeKeys = Object.keys(dateGroup.conversationGroups).sort((a, b) => {
-      return b.localeCompare(a); // 从晚到早
+  // 对每个日期组内的交易按 datetime 排序（从新到旧）
+  for (const date in groups) {
+    // 使用完整的 datetime 进行排序（反序：最新的在前面）
+    groups[date].entries.sort((a, b) => {
+      try {
+        const dateTimeA = new Date(a.datetime);
+        const dateTimeB = new Date(b.datetime);
+        
+        // 检查日期是否有效
+        if (!isNaN(dateTimeA) && !isNaN(dateTimeB)) {
+          // 注意这里是降序排列（最新的在前）
+          const timeResult = dateTimeB - dateTimeA;
+          if (timeResult !== 0) return timeResult;
+        }
+        
+        // 如果时间相同或无效，回退到ID排序
+        return b.id - a.id;  // 也使用降序排列
+      } catch (e) {
+        // 出错时回退到ID排序（降序）
+        return b.id - a.id;
+      }
     });
-    
-    // 清空原始entries数组，以便重新填充
-    dateGroup.entries = [];
-    
-    // 遍历每个对话轮次
-    for (const timeKey of sortedTimeKeys) {
-      const conversationEntries = dateGroup.conversationGroups[timeKey];
-      
-      // 对同一轮对话中的条目按ID排序（ID越大越晚）
-      // 注意：这里我们假设ID越大表示越晚添加
-      const sortedEntries = [...conversationEntries].sort((a, b) => {
-        return a.id - b.id; // 从早到晚，在模板中会反向显示
-      });
-      
-      // 将排序后的条目添加到entries数组
-      dateGroup.entries.push(...sortedEntries);
-    }
   }
   
   // 转换为数组并按日期排序（从新到旧）
   return Object.values(groups).sort((a, b) => {
-    return new Date(b.date) - new Date(a.date)
-  })
+    try {
+      return new Date(b.date) - new Date(a.date);
+    } catch (e) {
+      // 如果日期解析出错，保持原顺序
+      return 0;
+    }
+  });
 }
 
 // 格式化日期头部显示
@@ -278,6 +268,33 @@ const formatDateHeader = (date, isToday, weekday) => {
   // 提取月和日
   const [year, month, day] = date.split('-')
   return `${month}月${day}日 (${weekday})`
+}
+
+// 格式化交易具体时间
+const formatEntryTime = (dateTime) => {
+  if (!dateTime) return '';
+  
+  try {
+    // 尝试将字符串解析为日期对象
+    const date = new Date(dateTime);
+    
+    // 检查日期是否有效
+    if (!isNaN(date.getTime())) {
+      // 以 HH:MM 格式返回时间
+      return date.toTimeString().substring(0, 5);
+    }
+    
+    // 如果不能解析为日期对象，尝试从字符串中提取
+    const parts = dateTime.split(' ');
+    if (parts.length > 1 && parts[1]) {
+      return parts[1].substring(0, 5); // 返回时:分
+    }
+    
+    return '';
+  } catch (e) {
+    console.error('格式化时间出错:', e);
+    return '';
+  }
 }
 
 // 获取类别图标
@@ -474,6 +491,12 @@ const getCategoryClass = (category) => {
 .entry-description {
   font-size: 13px;
   color: #666;
+}
+
+.entry-time {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
 }
 
 .entry-amount {
