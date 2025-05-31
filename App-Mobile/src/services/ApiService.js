@@ -2,7 +2,7 @@
  * API服务类
  * 将Python的API.py转换为JavaScript服务
  */
-import SQLiteDataStore from './SQLiteDataStore';
+import LocalForageDataStore from './LocalForageDataStore';
 import AIAccountant from './AIAccountant';
 
 // 数据库实例
@@ -12,11 +12,11 @@ let aiAccountant = null;
 
 /**
  * 获取数据库实例
- * @returns {SQLiteDataStore} 数据库实例
+ * @returns {LocalForageDataStore} 数据库实例
  */
 function getDb() {
   if (!dbInstance) {
-    dbInstance = new SQLiteDataStore();
+    dbInstance = new LocalForageDataStore();
     dbInstance.initializeDb(); // 初始化数据库
   }
   return dbInstance;
@@ -149,7 +149,14 @@ function getTimeRangeFromPeriod(timePeriodStr, referenceDateStr = null) {
  */
 function formatDateTimeForDb(date) {
   if (!date) return null;
-  return date.toISOString().replace('T', ' ').substr(0, 19);
+  // 使用本地时间而非UTC时间，避免时区问题
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
 /**
