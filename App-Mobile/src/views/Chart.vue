@@ -280,7 +280,8 @@ const getFilterDateRange = () => {
     // 当年的1月1日到12月31日
     startDate = new Date(now.getFullYear(), 0, 1)
     endDate = new Date(now.getFullYear(), 11, 31)
-  }  // 设置时间为当天的开始和结束
+  }
+    // 设置时间为当天的开始和结束
   startDate.setHours(0, 0, 0, 0)
   endDate.setHours(23, 59, 59, 999)
   

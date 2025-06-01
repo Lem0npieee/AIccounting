@@ -148,8 +148,13 @@ onMounted(() => {
     ]
   }
 
-  // 自动滚动到底部
-  scrollToBottom()
+  // 确保等DOM更新后再滚动到底部
+  nextTick(() => {
+    // 添加短暂延时，确保渲染完成
+    setTimeout(() => {
+      scrollToBottom()
+    }, 300)
+  })
   
   // 自动启动AI助手
   startAiAssistant()
@@ -330,7 +335,10 @@ const getCategoryIcon = (category) => {
 // 滚动到底部
 const scrollToBottom = () => {
   if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    // 使用requestAnimationFrame确保在下一帧渲染后滚动
+    requestAnimationFrame(() => {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    })
   }
 }
 
@@ -355,7 +363,7 @@ const clearHistory = () => {
   flex-direction: column;
   height: calc(100vh - 50px); /* 减去导航栏高度 */
   background-color: #f5f5f5;
-  padding-bottom: 50px; /* 为底部导航栏留出空间 */
+  padding-bottom: 0px; /* 移除底部内边距，让输入框紧贴底部导航栏 */
 }
 
 .chat-container {
@@ -419,9 +427,10 @@ const clearHistory = () => {
 
 .input-container {
   display: flex;
-  padding: 12px;
+  padding: 10px 12px;
   border-top: 1px solid #e0e0e0;
   background-color: white;
+  margin-bottom: 0; /* 确保底部没有边距 */
 }
 
 .clear-button {
