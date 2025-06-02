@@ -155,11 +155,13 @@ def get_time_series_data_api_with_date_range(
     根据指定的日期范围获取时间序列数据，用于处理自定义日期范围的趋势数据。
     """
     # 解析日期
-    query_s_date = _parse_date_optional(start_date_str)
-    query_e_date = _parse_date_optional(end_date_str)
-    
-    if not query_s_date or not query_e_date:
+    try:
+        query_s_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        query_e_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
         raise ValueError(f"时间序列数据的日期范围无效: {start_date_str} 到 {end_date_str}")
+
+    print(f"处理时间范围: {query_s_date} 到 {query_e_date}")  # 调试输出
 
     # 获取交易数据
     all_transactions = get_filtered_transaction_list_api(
@@ -168,6 +170,9 @@ def get_time_series_data_api_with_date_range(
         income_expense_type="all",
         categories=categories
     )
+
+    print(f"获取到的交易数据数量: {len(all_transactions)}")  # 调试输出
+    print(f"第一条交易数据: {all_transactions[0] if all_transactions else 'None'}")  # 调试输出
 
     # 处理数据用于聚合
     processed_for_aggregation = []
@@ -183,6 +188,7 @@ def get_time_series_data_api_with_date_range(
                 try:
                     item_datetime_obj = datetime.datetime.strptime(item_datetime_obj, "%Y-%m-%d")
                 except ValueError:
+                    print(f"无法解析日期: {item_datetime_obj}")  # 调试输出
                     continue
         
         value_to_aggregate = 0.0
@@ -191,12 +197,12 @@ def get_time_series_data_api_with_date_range(
                 value_to_aggregate = abs(current_amount)
         elif income_expense_focus == "expense":
             if t['type'] == 'expense': 
-                value_to_aggregate = abs(current_amount)  # 对于expense图表，显示正值
+                value_to_aggregate = abs(current_amount)
         elif income_expense_focus == "net_income":
             if t['type'] == 'income':
                 value_to_aggregate = abs(current_amount)
             elif t['type'] == 'expense':
-                value_to_aggregate = -abs(current_amount)  # 净收入中expense为负值
+                value_to_aggregate = -abs(current_amount)
         elif income_expense_focus == "total_flow":
             value_to_aggregate = abs(current_amount)
         
@@ -204,6 +210,8 @@ def get_time_series_data_api_with_date_range(
             'datetime': item_datetime_obj,
             'value': value_to_aggregate
         })
+
+    print(f"处理后的数据数量: {len(processed_for_aggregation)}")  # 调试输出
 
     # 按时间单位分组数据
     grouped_data = defaultdict(float)
@@ -216,17 +224,13 @@ def get_time_series_data_api_with_date_range(
         
         for item in processed_for_aggregation:
             dt_obj = item['datetime']
-            if isinstance(dt_obj, datetime.datetime):
-                item_date = dt_obj.date()
-            elif isinstance(dt_obj, datetime.date):
-                item_date = dt_obj
-            else:
-                continue
-                
+            item_date = dt_obj.date()
+            
             if query_s_date <= item_date <= query_e_date:
-                weekday = dt_obj.weekday() if isinstance(dt_obj, datetime.datetime) else item_date.weekday()
+                weekday = dt_obj.weekday()
                 day_name_cn = days_of_week_map[weekday]
                 grouped_data[day_name_cn] += item['value']
+                print(f"按周聚合: {item_date} -> {day_name_cn}: {item['value']}")  # 调试输出
         
         result_series = [{"day_of_week": day_name_cn, "value": round(grouped_data[day_name_cn], 2)} for day_name_cn in days_of_week_map]
 
@@ -237,42 +241,38 @@ def get_time_series_data_api_with_date_range(
         
         for item in processed_for_aggregation:
             dt_obj = item['datetime']
-            if isinstance(dt_obj, datetime.datetime):
-                item_date = dt_obj.date()
-            elif isinstance(dt_obj, datetime.date):
-                item_date = dt_obj
-            else:
-                continue
-                
+            item_date = dt_obj.date()
+            
             if query_s_date <= item_date <= query_e_date:
-                month = dt_obj.month if isinstance(dt_obj, datetime.datetime) else item_date.month
+                month = dt_obj.month
                 month_name_cn = chinese_months_map[month - 1]
                 grouped_data[month_name_cn] += item['value']
+                print(f"按月聚合: {item_date} -> {month_name_cn}: {item['value']}")  # 调试输出
         
         result_series = [{"month_of_year": month_name_cn, "value": round(grouped_data[month_name_cn], 2)} for month_name_cn in chinese_months_map]
 
     elif time_unit == "day_of_month":
-        for i in range(1, 32): 
+        # 获取当前月份的天数
+        _, last_day = calendar.monthrange(query_e_date.year, query_e_date.month)
+        
+        for i in range(1, last_day + 1): 
             grouped_data[i] = 0.0
         
         for item in processed_for_aggregation:
             dt_obj = item['datetime']
-            if isinstance(dt_obj, datetime.datetime):
-                item_date = dt_obj.date()
-            elif isinstance(dt_obj, datetime.date):
-                item_date = dt_obj
-            else:
-                continue
-                
+            item_date = dt_obj.date()
+            
             if query_s_date <= item_date <= query_e_date:
-                day = dt_obj.day if isinstance(dt_obj, datetime.datetime) else item_date.day
+                day = dt_obj.day
                 grouped_data[day] += item['value']
+                print(f"按日聚合: {item_date} -> {day}: {item['value']}")  # 调试输出
         
-        result_series = [{"day": i, "value": round(grouped_data[i], 2)} for i in range(1, 32)]
-        
+        result_series = [{"day": i, "value": round(grouped_data[i], 2)} for i in range(1, last_day + 1)]
+    
     else:
         raise ValueError(f"不支持的时间单位: {time_unit}")
     
+    print(f"最终结果系列: {result_series}")  # 调试输出
     return result_series
 
 def get_category_distribution_api(
@@ -442,8 +442,22 @@ def get_chart_data_from_filters(filters_dict):
 @app.route('/get_transaction_list_for_frontend', methods=['GET'])
 def get_transaction_list_for_frontend_route():
     try:
-        transactions = get_filtered_transaction_list_api()
-        summary = get_summary_statistics_api()
+        # 从请求参数中获取日期范围
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        transaction_type = request.args.get('transaction_type', 'all')
+        
+        # 获取筛选后的交易记录
+        transactions = get_filtered_transaction_list_api(
+            start_date_str=start_date,
+            end_date_str=end_date
+        )
+        
+        # 获取对应时间范围的汇总数据
+        summary = get_summary_statistics_api(
+            start_date_str=start_date,
+            end_date_str=end_date
+        )
         
         # 序列化datetime对象
         serialized_transactions = []
@@ -510,7 +524,8 @@ def api_chat():
                         'amount': ledger_entry.get("amount"),
                         'category': ledger_entry.get("categoryTag") or "其他",
                         'specific_name': ledger_entry.get("specificName") or "",
-                        'datetime': ledger_entry.get("time") or datetime.datetime.now()
+                        'datetime': ledger_entry.get("time") or datetime.datetime.now(),
+                        'type': 'income' if float(ledger_entry.get("amount", 0)) > 0 else 'expense'
                     })
                 except Exception as e:
                     print(f"保存记账信息失败: {e}")
