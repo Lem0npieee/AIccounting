@@ -228,6 +228,34 @@ def get_time_series_data_api_with_date_range(
         
         result_series = [{"day": i, "value": round(grouped_data[i], 2)} for i in range(1, 32)]
         
+    elif time_unit == "week" or time_unit == "day":
+        # 创建从开始日期到结束日期每一天的日期键
+        delta_days = (query_e_date - query_s_date).days
+        for i in range(delta_days + 1):
+            current_date = query_s_date + datetime.timedelta(days=i)
+            date_key = current_date.strftime("%Y-%m-%d")
+            grouped_data[date_key] = 0.0
+        
+        # 聚合交易到对应日期
+        for item in processed_for_aggregation:
+            dt_obj = item['datetime']
+            if isinstance(dt_obj, datetime.datetime):
+                item_date = dt_obj.date()
+            elif isinstance(dt_obj, datetime.date):
+                item_date = dt_obj
+            else:
+                continue
+            
+            if query_s_date <= item_date <= query_e_date:
+                date_key = item_date.strftime("%Y-%m-%d")
+                grouped_data[date_key] += item['value']
+        
+        # 构建结果
+        result_series = [
+            {"date": date_key, "value": round(value, 2)}
+            for date_key, value in grouped_data.items()
+        ]
+        
     else:
         raise ValueError(f"不支持的时间单位: {time_unit}")
     
