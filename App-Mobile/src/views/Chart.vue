@@ -127,11 +127,43 @@
             <div class="category-percent">{{ (item.value / totalIncome * 100).toFixed(1) }}%</div>
           </div>
         </div>
-      </div>
-
-      <!-- 收支趋势折线图 -->
+      </div>      <!-- 收支趋势折线图 -->
       <div v-if="activeTab === 'trend'" class="trend-chart">
         <canvas ref="trendChart"></canvas>
+        
+        <!-- 前5笔最高支出交易 -->
+        <div class="top-transactions-section" v-if="topExpenseTransactions.length > 0">
+          <h3 class="top-transactions-title expense">前5笔最高支出</h3>
+          <div class="top-transactions-list">
+            <div v-for="(item, index) in topExpenseTransactions" :key="'expense-'+index" class="top-transaction-item">
+              <div class="transaction-info">
+                <div class="transaction-name">{{ item.specific_name }}</div>
+                <div class="transaction-category">{{ item.category }}</div>
+              </div>
+              <div class="transaction-bar-container">
+                <div class="transaction-bar expense" :style="{ width: (item.amount / topExpenseTransactions[0].amount * 100) + '%' }"></div>
+              </div>
+              <div class="transaction-amount expense">-¥{{ item.amount.toFixed(2) }}</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 前5笔最高收入交易 -->
+        <div class="top-transactions-section" v-if="topIncomeTransactions.length > 0">
+          <h3 class="top-transactions-title income">前5笔最高收入</h3>
+          <div class="top-transactions-list">
+            <div v-for="(item, index) in topIncomeTransactions" :key="'income-'+index" class="top-transaction-item">
+              <div class="transaction-info">
+                <div class="transaction-name">{{ item.specific_name }}</div>
+                <div class="transaction-category">{{ item.category }}</div>
+              </div>
+              <div class="transaction-bar-container">
+                <div class="transaction-bar income" :style="{ width: (item.amount / topIncomeTransactions[0].amount * 100) + '%' }"></div>
+              </div>
+              <div class="transaction-amount income">+¥{{ item.amount.toFixed(2) }}</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -163,6 +195,10 @@ const trendChartData = ref({
   expenseData: []
 })
 
+// 前5笔最高金额交易数据
+const topExpenseTransactions = ref([])
+const topIncomeTransactions = ref([])
+
 // 图表引用
 const expenseChart = ref(null)
 const incomeChart = ref(null)
@@ -183,7 +219,6 @@ const incomeCategories = [
 const timeTypes = [
   { value: 'week', label: '周' },
   { value: 'month', label: '月' },
-  { value: 'quarter', label: '季' },
   { value: 'year', label: '年' }
 ]
 
@@ -253,43 +288,81 @@ const toggleCategory = (type, category) => {
       filterIncome.value.splice(index, 1)
     }
   }
-}
+}  // 处理获取前5笔最高金额交易
+const processTopTransactions = async (startDateStr, endDateStr) => {
+    // 获取所有交易记录
+    const transactions = await ApiService.getFilteredTransactionList({
+      startDateStr,
+      endDateStr,
+      incomeExpenseType: "all",
+      categories: [...filterExpense.value, ...filterIncome.value]
+    })
+    
+    // 区分收入和支出
+    const incomeTransactions = transactions
+      .filter(t => t.type === 'income')
+      .map(t => ({
+        ...t,
+        amount: Math.abs(parseFloat(t.amount || 0)),
+        specific_name: t.specific_name || t.category
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5)
+    
+    const expenseTransactions = transactions
+      .filter(t => t.type === 'expense')
+      .map(t => ({
+        ...t,
+        amount: Math.abs(parseFloat(t.amount || 0)),
+        specific_name: t.specific_name || t.category
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5)
+    
+    // 更新状态
+    topIncomeTransactions.value = incomeTransactions
+    topExpenseTransactions.value = expenseTransactions
+  }
 
-// 获取筛选的日期范围
+  // 获取筛选的日期范围
 const getFilterDateRange = () => {
   const now = new Date()
   let startDate, endDate
-  
+    // 根据选择的时间类型计算日期范围
   if (filterTimeType.value === 'week') {
-    // 当前周的周一到周日
-    const day = now.getDay() || 7
-    startDate = new Date(now)
-    startDate.setDate(now.getDate() - day + 1)
-    endDate = new Date(startDate)
-    endDate.setDate(startDate.getDate() + 6)
+    // 从今天向前7天（包括今天）
+    endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    startDate.setDate(startDate.getDate() - 6) // 向前推6天，加上今天共7天
+    
+    // 确保startDate和endDate都是完整的天（00:00:00到23:59:59），使用当地时区
+    endDate.setHours(23, 59, 59, 999) // 设置为今天的最后一毫秒
+    startDate.setHours(0, 0, 0, 0) // 设置为起始日的第一毫秒
   } else if (filterTimeType.value === 'month') {
     // 当月的第一天到最后一天
     startDate = new Date(now.getFullYear(), now.getMonth(), 1)
     endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  } else if (filterTimeType.value === 'quarter') {
-    // 当季度的第一个月的第一天到最后一个月的最后一天
-    const quarter = Math.floor(now.getMonth() / 3)
-    startDate = new Date(now.getFullYear(), quarter * 3, 1)
-    endDate = new Date(now.getFullYear(), quarter * 3 + 3, 0)
+    
+    // 设置时间为当天的开始和结束
+    startDate.setHours(0, 0, 0, 0)
+    endDate.setHours(23, 59, 59, 999)
   } else if (filterTimeType.value === 'year') {
     // 当年的1月1日到12月31日
     startDate = new Date(now.getFullYear(), 0, 1)
     endDate = new Date(now.getFullYear(), 11, 31)
-  }
+    
     // 设置时间为当天的开始和结束
-  startDate.setHours(0, 0, 0, 0)
-  endDate.setHours(23, 59, 59, 999)
+    startDate.setHours(0, 0, 0, 0)
+    endDate.setHours(23, 59, 59, 999)
+  }
   
   // 使用本地日期格式，避免时区问题
   const startDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
   const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
   
   return {
+    startDate,
+    endDate,
     startDateStr,
     endDateStr,
     timeUnit: filterTimeType.value
@@ -334,21 +407,72 @@ const fetchFilteredData = async () => {
     })).sort((a, b) => b.value - a.value)
     
     // 处理趋势图数据
-    trendChartData.value = {
-      labels: chartData.trendData.map(item => {
-        if (filterTimeType.value === 'week') {
-          return item.day_of_week || '';
-        } else if (filterTimeType.value === 'month') {
-          return (item.day || '') + '日';
-        } else if (filterTimeType.value === 'year') {
-          return item.month_of_year || '';
-        } else {
-          return formatChartDateLabel(item.date);
+    if (filterTimeType.value === 'week') {
+      // 对于周视图，确保显示完整的7天数据（包括今天）
+      const { startDate, endDate } = getFilterDateRange();
+        // 创建一个包含所有7天日期的数组
+      const allDays = [];
+      const dayLabels = [];
+      const incomeData = [];
+      const expenseData = [];
+      
+      // 生成从startDate到endDate的每一天
+      for (let d = new Date(startDate.getTime()); d <= endDate; d.setDate(d.getDate() + 1)) {
+        // 使用本地时区格式化日期字符串
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const month = d.getMonth() + 1;
+        const day = d.getDate();
+        const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        const label = `${month}/${day} ${weekdays[d.getDay()]}`;
+        
+        // 添加日期和标签
+        allDays.push(dateStr);
+        dayLabels.push(label);
+        
+        // 默认值为0，如果找到数据会被覆盖
+        incomeData.push(0);
+        expenseData.push(0);
+      }
+        // 将API返回的数据映射到对应的日期
+      chartData.trendData.forEach(item => {
+        if (item.date) {
+          const dateStr = item.date;
+          // 标准化日期格式以确保匹配，处理可能的时区差异
+          const itemDate = new Date(item.date);
+          const formattedDateStr = `${itemDate.getFullYear()}-${String(itemDate.getMonth() + 1).padStart(2, '0')}-${String(itemDate.getDate()).padStart(2, '0')}`;
+          
+          const index = allDays.findIndex(day => day === formattedDateStr);
+          if (index !== -1) {
+            incomeData[index] = item.income || 0;
+            expenseData[index] = item.expense || 0;
+          }
         }
-      }),
-      incomeData: chartData.trendData.map(item => item.income || 0),
-      expenseData: chartData.trendData.map(item => item.expense || 0)
+      });
+      
+      // 更新趋势图数据
+      trendChartData.value = {
+        labels: dayLabels,
+        incomeData: incomeData,
+        expenseData: expenseData
+      };
+    } else {
+      // 月视图和年视图保持原来的处理逻辑
+      trendChartData.value = {
+        labels: chartData.trendData.map(item => {
+          if (filterTimeType.value === 'month') {
+            return (item.day || '') + '日';
+          } else if (filterTimeType.value === 'year') {
+            return item.month_of_year || '';
+          } else {
+            return formatChartDateLabel(item.date);
+          }
+        }),
+        incomeData: chartData.trendData.map(item => item.income || 0),
+        expenseData: chartData.trendData.map(item => item.expense || 0)
+      };
     }
+      // 获取前5笔最高金额交易
+    await processTopTransactions(startDateStr, endDateStr)
     
     // 渲染图表
     nextTick(() => {
@@ -376,21 +500,39 @@ const formatChartDateLabel = (dateStr) => {
   
   // 根据时间范围的不同，返回不同格式的日期标签
   if (filterTimeType.value === 'week') {
-    // 周视图显示 "周一" 到 "周日"
+    // 周视图显示日期和星期，如"5/1 周一"
     const date = new Date(dateStr)
     const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-    return weekdays[date.getDay()]
+    const month = date.getMonth() + 1
+    const day = date.getDate()
+    return `${month}/${day} ${weekdays[date.getDay()]}`
   } else if (filterTimeType.value === 'month') {
     // 月视图显示 "1日" 到 "31日"
-    return dateStr.split('-')[2] + '日'
-  } else if (filterTimeType.value === 'quarter') {
-    // 季度视图显示 "1月" 到 "12月"
-    const month = parseInt(dateStr.split('-')[1])
-    return month + '月'
+    try {
+      // 如果是完整日期，取出日
+      if (dateStr.includes('-')) {
+        return dateStr.split('-')[2] + '日'
+      } 
+      // 如果已经是数字，直接添加"日"
+      return dateStr + '日'
+    } catch (e) {
+      console.error('日期格式化错误:', e)
+      return dateStr
+    }
   } else {
     // 年视图显示 "1月" 到 "12月"
-    const month = parseInt(dateStr.split('-')[1])
-    return month + '月'
+    try {
+      // 如果是完整日期，取出月
+      if (dateStr.includes('-')) {
+        const month = parseInt(dateStr.split('-')[1])
+        return month + '月'
+      }
+      // 如果已经是数字，直接添加"月"
+      return dateStr + '月'
+    } catch (e) {
+      console.error('日期格式化错误:', e)
+      return dateStr
+    }
   }
 }
 
@@ -865,5 +1007,99 @@ const getCategoryIcon = (category) => {
   text-align: right;
   color: #666;
   font-size: 13px;
+}
+
+/* 前5笔交易样式 */
+.top-transactions-section {
+  margin-top: 30px;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 20px;
+}
+
+.top-transactions-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.top-transactions-title.expense::before {
+  content: "📉";
+  margin-right: 6px;
+}
+
+.top-transactions-title.income::before {
+  content: "📈";
+  margin-right: 6px;
+}
+
+.top-transactions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.top-transaction-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.transaction-info {
+  width: 80px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.transaction-name {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transaction-category {
+  font-size: 12px;
+  color: #666;
+}
+
+.transaction-bar-container {
+  flex: 1;
+  height: 12px;
+  background-color: #f0f0f0;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.transaction-bar {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.5s ease-out;
+}
+
+.transaction-bar.expense {
+  background-color: #F44336;
+}
+
+.transaction-bar.income {
+  background-color: #4CAF50;
+}
+
+.transaction-amount {
+  min-width: 90px;
+  text-align: right;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.transaction-amount.expense {
+  color: #F44336;
+}
+
+.transaction-amount.income {
+  color: #4CAF50;
 }
 </style>
