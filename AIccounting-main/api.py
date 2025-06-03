@@ -209,7 +209,49 @@ def get_time_series_data_api_with_date_range(
     grouped_data = defaultdict(float)
     result_series = []
 
-    if time_unit == "day_of_month":
+    if time_unit == "day_of_week":
+        days_of_week_map = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+        for day_name_cn in days_of_week_map: 
+            grouped_data[day_name_cn] = 0.0
+        
+        for item in processed_for_aggregation:
+            dt_obj = item['datetime']
+            if isinstance(dt_obj, datetime.datetime):
+                item_date = dt_obj.date()
+            elif isinstance(dt_obj, datetime.date):
+                item_date = dt_obj
+            else:
+                continue
+                
+            if query_s_date <= item_date <= query_e_date:
+                weekday = dt_obj.weekday() if isinstance(dt_obj, datetime.datetime) else item_date.weekday()
+                day_name_cn = days_of_week_map[weekday]
+                grouped_data[day_name_cn] += item['value']
+        
+        result_series = [{"day_of_week": day_name_cn, "value": round(grouped_data[day_name_cn], 2)} for day_name_cn in days_of_week_map]
+
+    elif time_unit == "month_of_year":
+        chinese_months_map = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"]
+        for month_name_cn in chinese_months_map: 
+            grouped_data[month_name_cn] = 0.0
+        
+        for item in processed_for_aggregation:
+            dt_obj = item['datetime']
+            if isinstance(dt_obj, datetime.datetime):
+                item_date = dt_obj.date()
+            elif isinstance(dt_obj, datetime.date):
+                item_date = dt_obj
+            else:
+                continue
+                
+            if query_s_date <= item_date <= query_e_date:
+                month = dt_obj.month if isinstance(dt_obj, datetime.datetime) else item_date.month
+                month_name_cn = chinese_months_map[month - 1]
+                grouped_data[month_name_cn] += item['value']
+        
+        result_series = [{"month_of_year": month_name_cn, "value": round(grouped_data[month_name_cn], 2)} for month_name_cn in chinese_months_map]
+
+    elif time_unit == "day_of_month":
         for i in range(1, 32): 
             grouped_data[i] = 0.0
         
