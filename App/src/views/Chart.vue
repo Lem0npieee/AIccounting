@@ -166,9 +166,8 @@
             <!-- 收入点 -->
             <circle v-for="(pt, idx) in getLineDots('income')" :key="'income'+idx" :cx="pt.x" :cy="pt.y" r="4" fill="#67C23A" />
             <!-- 支出点 -->
-            <circle v-for="(pt, idx) in getLineDots('expense')" :key="'expense'+idx" :cx="pt.x" :cy="pt.y" r="4" fill="#F56C6C" />
-            <!-- 日期标签 -->
-            <text v-for="(day, idx) in getTrendLineXAxisLabels()" :key="'date'+idx" :x="40 + idx * (360 / (getTrendLineXAxisLabels().length - 1 || 1))" y="215" text-anchor="middle" font-size="12" fill="#909399">{{ day }}</text>
+            <circle v-for="(pt, idx) in getLineDots('expense')" :key="'expense'+idx" :cx="pt.x" :cy="pt.y" r="4" fill="#F56C6C" />            <!-- 日期标签 -->
+            <text v-for="(day, idx) in getTrendXAxisLabels()" :key="'date'+idx" :x="40 + idx * (360 / (getTrendXAxisLabels().length - 1 || 1))" y="215" text-anchor="middle" font-size="12" fill="#909399">{{ day }}</text>
             <!-- 金额刻度 -->
             <text v-for="tick in 5" :key="'tick'+tick" x="30" :y="200 - (tick-1)*45" text-anchor="end" font-size="12" fill="#909399">{{ Math.round(getMaxTrendValue() * (tick-1)/4) }}</text>
           </svg>
@@ -366,25 +365,10 @@ export default {
         console.log('发送请求的参数:', {
           url: `${this.apiBaseUrl}/get_chart_data_from_filters`,
           params: requestParams
-        });
-
-        // 请求后端        // 将时间单位映射到后端接受的格式
-        let timeUnit;
-        if (this.filterTimeType === 'week') {
-          timeUnit = 'week';
-        } else if (this.filterTimeType === 'month') {
-          timeUnit = 'day_of_month';
-        } else {
-          timeUnit = 'month_of_year';
-        }
+        });        // 使用requestParams发送请求
+        console.log('发送请求参数:', requestParams);
         
-        const response = await axios.post(`${this.apiBaseUrl}/get_chart_data_from_filters`, {
-          income_categories: this.filterIncome,
-          expense_categories: this.filterExpense,
-          start_date: startDate,
-          end_date: endDate,
-          time_unit: timeUnit
-        });
+        const response = await axios.post(`${this.apiBaseUrl}/get_chart_data_from_filters`, requestParams);
 
         if (response.data.error) throw new Error(response.data.error);
         
@@ -397,15 +381,20 @@ export default {
         };        this.incomeCategoryData = response.data.income_category_distribution;
         this.expenseCategoryData = response.data.expense_category_distribution;        this.trendData = response.data.daily_net_income_series;
         this.incomeTrendData = response.data.daily_income_series || [];
-        this.expenseTrendData = response.data.daily_expense_series || [];
-
-        // 数据更新后的状态
+        this.expenseTrendData = response.data.daily_expense_series || [];        // 数据更新后的状态
         console.log('数据更新后的状态:', {
           summary: this.summary,
           trendData: this.trendData,
           incomeTrendData: this.incomeTrendData,
           expenseTrendData: this.expenseTrendData
         });
+        
+        // 调试年视图数据
+        if (this.filterTimeType === 'year') {
+          console.log('年视图调试 - 月份标签:', this.getTrendXAxisLabels());
+          console.log('年视图调试 - 收入数据:', this.getTrendSeriesData('income'));
+          console.log('年视图调试 - 支出数据:', this.getTrendSeriesData('expense'));
+        }
 
         // 合并所有明细
         this.ledgerEntries = [
@@ -596,9 +585,16 @@ export default {
     // 获取趋势图X轴标签    
     getTrendXAxisLabels() {
       if (!this.trendData || !this.trendData.length) return [];
-      
-      if (this.filterTimeType === 'week') {
-        // 处理特殊的周视图，确保显示所有7天（包括今天）
+        if (this.filterTimeType === 'week') {
+        // 如果有后端数据，尝试使用后端提供的标签
+        if (this.trendData && this.trendData.length) {
+          // 检查是否包含 day_of_week 字段
+          if (this.trendData[0].day_of_week) {
+            return this.trendData.map(item => item.day_of_week || '');
+          }
+        }
+        
+        // 如果后端数据不可用或格式不符，创建自定义标签
         const now = new Date();
         const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -615,14 +611,30 @@ export default {
           labels.push(`${month}/${day} ${weekday}`);
         }
         
-        return labels;      } else if (this.filterTimeType === 'month') {
+        return labels;} else if (this.filterTimeType === 'month') {
         return this.trendData.map((item, idx) => (item.day || (idx + 1) + '日'));      } else if (this.filterTimeType === 'year') {
-        // 年视图固定显示1月到12月，不依赖后端返回数据
-        const monthLabels = [];
-        for (let i = 1; i <= 12; i++) {
-          monthLabels.push(i + '月');
+        // 如果有后端数据，使用后端提供的月份标签
+        if (this.trendData && this.trendData.length) {
+          return this.trendData.map(item => {
+            // 处理中文月份到数字月份的转换
+            if (item.month_of_year) {
+              const chineseMonthMap = {
+                '一月': '1月', '二月': '2月', '三月': '3月', '四月': '4月',
+                '五月': '5月', '六月': '6月', '七月': '7月', '八月': '8月',
+                '九月': '9月', '十月': '10月', '十一月': '11月', '十二月': '12月'
+              };
+              return chineseMonthMap[item.month_of_year] || item.month_of_year;
+            }
+            return '';
+          });
+        } else {
+          // 后端数据不存在时，生成默认月份标签
+          const monthLabels = [];
+          for (let i = 1; i <= 12; i++) {
+            monthLabels.push(i + '月');
+          }
+          return monthLabels;
         }
-        return monthLabels;
       }
       return [];
     },
@@ -656,13 +668,23 @@ export default {
         // 将API返回的数据映射到对应的月份
         dataSource.forEach(item => {
           let monthIndex = -1;
-          
-          if (item.month_of_year) {
-            // 如果返回的是"1月"格式，提取数字部分
-            const monthNumStr = item.month_of_year.replace(/[^0-9]/g, '');
-            const monthNum = parseInt(monthNumStr);
-            if (!isNaN(monthNum)) {
-              monthIndex = monthNum - 1; // 月份从1开始，索引从0开始
+            if (item.month_of_year) {
+            // 处理中文月份格式（如"一月"、"二月"等）
+            const chineseMonthMap = {
+              '一月': 0, '二月': 1, '三月': 2, '四月': 3, 
+              '五月': 4, '六月': 5, '七月': 6, '八月': 7,
+              '九月': 8, '十月': 9, '十一月': 10, '十二月': 11
+            };
+            
+            if (chineseMonthMap[item.month_of_year] !== undefined) {
+              monthIndex = chineseMonthMap[item.month_of_year];
+            } else {
+              // 如果不是中文月份，尝试提取数字部分（兼容"1月"格式）
+              const monthNumStr = item.month_of_year.replace(/[^0-9]/g, '');
+              const monthNum = parseInt(monthNumStr);
+              if (!isNaN(monthNum)) {
+                monthIndex = monthNum - 1; // 月份从1开始，索引从0开始
+              }
             }
           } else if (item.month) {
             // 如果直接提供月份数字
@@ -690,8 +712,29 @@ export default {
           }
         });
         
-        return values;
-      } else if (this.filterTimeType === 'week') {
+        return values;      } else if (this.filterTimeType === 'week') {
+        // 检查后端数据格式，如果有day_of_week字段，直接使用后端数据
+        if (dataSource && dataSource.length && dataSource[0].day_of_week) {
+          const weekdayOrder = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']; // 后端的顺序
+          const values = new Array(7).fill(0);
+          
+          dataSource.forEach(item => {
+            const idx = weekdayOrder.indexOf(item.day_of_week);
+            if (idx !== -1) {
+              if (type === 'income' && item.income !== undefined) {
+                values[idx] = parseFloat(item.income || 0);
+              } else if (type === 'expense' && item.expense !== undefined) {
+                values[idx] = parseFloat(Math.abs(item.expense || 0));
+              } else {
+                values[idx] = parseFloat(item.value || 0);
+              }
+            }
+          });
+          
+          return values;
+        }
+        
+        // 如果后端数据不含day_of_week字段，则按日期处理
         // 周视图特殊处理，确保7天数据完整
         const now = new Date();
         const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
