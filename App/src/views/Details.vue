@@ -172,65 +172,152 @@ export default {
       }
     },
     
+    // 格式化日期头部
+    formatDateHeader(dateStr, isToday, weekday) {
+      if (!dateStr) return '加载中...';  // 添加默认返回值
+      
+      try {
+        // 尝试解析日期字符串
+        let date;
+        if (dateStr.includes(' ')) {
+          // 如果是 datetime 格式 (YYYY-MM-DD HH:mm:ss)
+          date = new Date(dateStr);
+        } else {
+          // 如果是 date 格式 (YYYY-MM-DD)
+          const [year, month, day] = dateStr.split('-').map(num => parseInt(num));
+          date = new Date(year, month - 1, day);
+        }
+
+        if (isNaN(date.getTime())) {
+          console.error('无效的日期:', dateStr);
+          return dateStr;
+        }
+
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        const weekDayStr = weekDays[date.getDay()];
+        
+        if (isToday) {
+          return `今天 ${month}月${day}日 ${weekDayStr}`;
+        } else {
+          return `${month}月${day}日 ${weekDayStr}`;
+        }
+      } catch (error) {
+        console.error('日期格式化错误:', error);
+        return dateStr || '未知日期';  // 添加默认返回值
+      }
+    },
+
+    // 判断是否是今天
+    isToday(dateStr) {
+      if (!dateStr) return false;
+      
+      try {
+        let date;
+        if (dateStr.includes(' ')) {
+          date = new Date(dateStr);
+        } else {
+          const [year, month, day] = dateStr.split('-').map(num => parseInt(num));
+          date = new Date(year, month - 1, day);
+        }
+
+        if (isNaN(date.getTime())) {
+          return false;
+        }
+
+        const today = new Date();
+        return date.getFullYear() === today.getFullYear() &&
+               date.getMonth() === today.getMonth() &&
+               date.getDate() === today.getDate();
+      } catch (error) {
+        console.error('日期比较错误:', error);
+        return false;
+      }
+    },
+
+    // 获取星期几
+    getWeekday(dateStr) {
+      if (!dateStr) return '';
+      
+      try {
+        let date;
+        if (dateStr.includes(' ')) {
+          date = new Date(dateStr);
+        } else {
+          const [year, month, day] = dateStr.split('-').map(num => parseInt(num));
+          date = new Date(year, month - 1, day);
+        }
+
+        if (isNaN(date.getTime())) {
+          return '';
+        }
+
+        const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        return weekDays[date.getDay()];
+      } catch (error) {
+        console.error('获取星期错误:', error);
+        return '';
+      }
+    },
+
     // 按日期分组交易记录
     groupEntriesByDate(transactions) {
-      const groups = {}
+      if (!Array.isArray(transactions)) {
+        console.error('传入的 transactions 不是数组:', transactions);
+        return [];
+      }
+
+      const groups = {};
       
       transactions.forEach(transaction => {
-        const date = transaction.date
-        if (!groups[date]) {
-          groups[date] = {
-            date: date,
-            isToday: this.isToday(date),
-            weekday: this.getWeekday(date),
+        if (!transaction) return;
+
+        // 处理日期
+        let dateStr = '';
+        if (transaction.datetime) {
+          // 从 datetime 中提取日期部分
+          dateStr = transaction.datetime.split(' ')[0];
+        } else if (transaction.date) {
+          // 如果有 date 字段就直接使用
+          dateStr = transaction.date;
+        }
+
+        if (!dateStr) {
+          console.error('无法获取日期:', transaction);
+          return;
+        }
+
+        if (!groups[dateStr]) {
+          groups[dateStr] = {
+            date: dateStr,
+            isToday: this.isToday(dateStr),
+            weekday: this.getWeekday(dateStr),
             income: 0,
             expense: 0,
             entries: []
-          }
+          };
         }
         
         // 更新日汇总
+        const amount = parseFloat(transaction.amount) || 0;
         if (transaction.type === 'income') {
-          groups[date].income += transaction.amount
+          groups[dateStr].income += Math.abs(amount);
         } else {
-          groups[date].expense += transaction.amount
+          groups[dateStr].expense += Math.abs(amount);
         }
         
         // 添加交易记录
-        groups[date].entries.push(transaction)
-      })
+        groups[dateStr].entries.push({
+          ...transaction,
+          amount: Math.abs(amount)
+        });
+      });
       
-      // 转换为数组并排序
-      return Object.values(groups).sort((a, b) => new Date(b.date) - new Date(a.date))
-    },
-    
-    // 判断是否是今天
-    isToday(dateStr) {
-      const today = new Date()
-      const date = new Date(dateStr)
-      return date.getDate() === today.getDate() &&
-             date.getMonth() === today.getMonth() &&
-             date.getFullYear() === today.getFullYear()
-    },
-    
-    // 获取星期几
-    getWeekday(dateStr) {
-      const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-      const date = new Date(dateStr)
-      return weekdays[date.getDay()]
-    },
-    
-    // 格式化日期头部显示（05月15日 周四 或 今天周五）
-    formatDateHeader(dateStr, isToday, weekday) {
-      if (isToday) {
-        return `今天${weekday}`
-      }
-      
-      const dateParts = dateStr.split('-')
-      const month = dateParts[1]
-      const day = dateParts[2]
-      
-      return `${month}月${day}日 ${weekday}`
+      // 转换为数组并按日期倒序排序
+      return Object.values(groups).sort((a, b) => {
+        return new Date(b.date) - new Date(a.date);
+      });
     },
     
     // 获取分类图标
