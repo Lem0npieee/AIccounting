@@ -168,7 +168,7 @@
             <!-- 支出点 -->
             <circle v-for="(pt, idx) in getLineDots('expense')" :key="'expense'+idx" :cx="pt.x" :cy="pt.y" r="4" fill="#F56C6C" />
             <!-- 日期标签 -->
-            <text v-for="(day, idx) in getTrendXAxisLabels()" :key="'date'+idx" :x="40 + idx * (360 / (getTrendXAxisLabels().length - 1 || 1))" y="215" text-anchor="middle" font-size="12" fill="#909399">{{ day }}</text>
+            <text v-for="(day, idx) in getTrendLineXAxisLabels()" :key="'date'+idx" :x="40 + idx * (360 / (getTrendLineXAxisLabels().length - 1 || 1))" y="215" text-anchor="middle" font-size="12" fill="#909399">{{ day }}</text>
             <!-- 金额刻度 -->
             <text v-for="tick in 5" :key="'tick'+tick" x="30" :y="200 - (tick-1)*45" text-anchor="end" font-size="12" fill="#909399">{{ Math.round(getMaxTrendValue() * (tick-1)/4) }}</text>
           </svg>
@@ -200,6 +200,7 @@
           </div>
         </div>
       </div>
+
         <!-- 前5笔最高收入交易 -->
       <div class="top-transactions-section" v-if="topIncomeTransactions.length > 0">
         <h3 class="top-transactions-title income">前5笔最高收入</h3>
@@ -352,12 +353,21 @@ export default {
           startDate = `${this.currentYear}-01-01`;
           endDate = `${this.currentYear}-12-31`;
         }
-        console.log('fetchChartData - 请求参数:', {
+
+        const requestParams = {
           income_categories: this.filterIncome,
           expense_categories: this.filterExpense,
           start_date: startDate,
-          end_date: endDate
+          end_date: endDate,
+          time_unit: this.filterTimeType === 'week' ? 'day_of_week' : 
+                     this.filterTimeType === 'month' ? 'day_of_month' : 'month_of_year'
+        };
+
+        console.log('发送请求的参数:', {
+          url: `${this.apiBaseUrl}/get_chart_data_from_filters`,
+          params: requestParams
         });
+
         // 请求后端        // 将时间单位映射到后端接受的格式
         let timeUnit;
         if (this.filterTimeType === 'week') {
@@ -375,20 +385,28 @@ export default {
           end_date: endDate,
           time_unit: timeUnit
         });
-        console.log('fetchChartData - 后端返回数据:', response.data);
+
         if (response.data.error) throw new Error(response.data.error);
-        // 汇总
+        
+        // 更新数据
         this.summary = {
           income: response.data.summary_statistics.total_income,
           expense: response.data.summary_statistics.total_expense,
           balance: response.data.summary_statistics.net_income
+
         };        this.incomeCategoryData = response.data.income_category_distribution;
         this.expenseCategoryData = response.data.expense_category_distribution;        this.trendData = response.data.daily_net_income_series;
         this.incomeTrendData = response.data.daily_income_series || [];
         this.expenseTrendData = response.data.daily_expense_series || [];
-        console.log('fetchChartData - trendData:', this.trendData);
-        console.log('fetchChartData - incomeTrendData:', this.incomeTrendData);
-        console.log('fetchChartData - expenseTrendData:', this.expenseTrendData);
+
+        // 数据更新后的状态
+        console.log('数据更新后的状态:', {
+          summary: this.summary,
+          trendData: this.trendData,
+          incomeTrendData: this.incomeTrendData,
+          expenseTrendData: this.expenseTrendData
+        });
+
         // 合并所有明细
         this.ledgerEntries = [
           ...response.data.filtered_income_transactions.map(e => ({ ...e, amount: Math.abs(e.amount), categoryTag: e.category, specificName: e.specific_name, time: e.datetime })),
@@ -577,8 +595,6 @@ export default {
     },
     // 获取趋势图X轴标签    
     getTrendXAxisLabels() {
-      console.log('getTrendXAxisLabels - trendData:', this.trendData);
-      console.log('getTrendXAxisLabels - filterTimeType:', this.filterTimeType);
       if (!this.trendData || !this.trendData.length) return [];
       
       if (this.filterTimeType === 'week') {
@@ -609,7 +625,9 @@ export default {
         return monthLabels;
       }
       return [];
-    },// 获取趋势图的最大值，用于统一Y轴刻度
+    },
+    // 获取趋势图的最大值，用于统一Y轴刻度
+
     getMaxTrendValue() {
       const netData = this.getTrendSeriesData('net');
       const incomeData = this.getTrendSeriesData('income');
@@ -733,7 +751,8 @@ export default {
       }
       
       return dataSource.map(item => item.value || 0);
-    },// 生成polyline的points字符串
+    },
+    // 生成polyline的points字符串
     getLinePoints(type = 'net') {
       const data = this.getTrendSeriesData(type);
       console.log(`getLinePoints(${type}) - series data:`, data);
@@ -748,7 +767,8 @@ export default {
       }).join(' ');
       console.log(`getLinePoints(${type}) - points:`, points);
       return points;
-    },    // 生成每个点的坐标数组
+    },
+    // 生成每个点的坐标数组
     getLineDots(type = 'net') {
       const data = this.getTrendSeriesData(type);
       console.log(`getLineDots(${type}) - series data:`, data);
@@ -764,6 +784,7 @@ export default {
       console.log(`getLineDots(${type}) - dots:`, dots);
       return dots;
     },
+
   }
 }
 </script>
@@ -771,7 +792,7 @@ export default {
 <style scoped>
 .chart-container {
   padding: 15px;
-  padding-bottom: 65px;
+  padding-bottom: 150px;
   height: 100%;
   background-color: #f5f7fa;
 }
@@ -1026,6 +1047,7 @@ export default {
 .bar-chart-placeholder {
   margin-top: 20px;
   padding: 20px 0;
+  padding-bottom: 30px;
   background-color: #fff;
   border-radius: 10px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
