@@ -2,7 +2,7 @@
  * LocalForage 数据存储类，负责与本地存储的交互
  * 使用 localforage 替代 SQLite 实现持久化存储
  */
-import localforage from 'localforage';
+import localforage from "localforage";
 
 class LocalForageDataStore {
   /**
@@ -21,34 +21,34 @@ class LocalForageDataStore {
     if (this.isInitialized) return true;
 
     try {
-      console.log('初始化 localforage 数据库...');
-      
+      console.log("初始化 localforage 数据库...");
+
       // 配置主存储实例
       localforage.config({
-        name: 'AIccounting',
-        storeName: 'entries', // 默认存储名称
-        description: 'AI记账助手的本地数据存储'
+        name: "AIccounting",
+        storeName: "entries", // 默认存储名称
+        description: "AI记账助手的本地数据存储",
       });
-      
+
       // 创建单独的存储实例用于账目数据
       this.entriesStore = localforage.createInstance({
-        name: 'AIccounting',
-        storeName: 'entries'
+        name: "AIccounting",
+        storeName: "entries",
       });
-      
+
       // 检查数据库是否正常工作
-      await this.entriesStore.setItem('__test__', 'ok');
-      const test = await this.entriesStore.getItem('__test__');
-      if (test !== 'ok') {
-        throw new Error('localforage 实例测试失败');
+      await this.entriesStore.setItem("__test__", "ok");
+      const test = await this.entriesStore.getItem("__test__");
+      if (test !== "ok") {
+        throw new Error("localforage 实例测试失败");
       }
-      await this.entriesStore.removeItem('__test__');
-      
-      console.log('localforage 数据库初始化成功');
+      await this.entriesStore.removeItem("__test__");
+
+      console.log("localforage 数据库初始化成功");
       this.isInitialized = true;
       return true;
     } catch (error) {
-      console.error('初始化 localforage 数据库错误:', error);
+      console.error("初始化 localforage 数据库错误:", error);
       return false;
     }
   }
@@ -64,37 +64,36 @@ class LocalForageDataStore {
         await this.initializeDb();
       }
 
-      console.log('准备添加记账条目:', entry);
-      
+      console.log("准备添加记账条目:", entry);
+
       // 获取所有现有条目
       let entries = await this.getAllEntries();
-      
+
       // 生成新的ID (自增)
-      const newId = entries.length > 0 
-        ? Math.max(...entries.map(e => e.id || 0)) + 1 
-        : 1;
-      
+      const newId =
+        entries.length > 0 ? Math.max(...entries.map((e) => e.id || 0)) + 1 : 1;
+
       // 创建新条目对象
       const newEntry = {
         id: newId,
         amount: parseFloat(entry.amount),
-        category: entry.category || entry.categoryTag || '其他',
-        specific_name: entry.specific_name || entry.specificName || '',
+        category: entry.category || entry.categoryTag || "其他",
+        specific_name: entry.specific_name || entry.specificName || "",
         datetime: entry.datetime || entry.time || new Date().toISOString(),
-        entry_type: entry.entry_type || entry.type || 'expense',
-        created_at: new Date().toISOString()
+        entry_type: entry.entry_type || entry.type || "expense",
+        created_at: new Date().toISOString(),
       };
-      
+
       // 添加到数组
       entries.push(newEntry);
-      
+
       // 保存回 localforage
-      await this.entriesStore.setItem('entries', entries);
-      
+      await this.entriesStore.setItem("entries", entries);
+
       console.log(`成功添加记账条目, ID: ${newId}`);
       return newId;
     } catch (error) {
-      console.error('添加记账条目错误:', error);
+      console.error("添加记账条目错误:", error);
       return null;
     }
   }
@@ -108,11 +107,11 @@ class LocalForageDataStore {
       if (!this.isInitialized) {
         await this.initializeDb();
       }
-      
-      const entries = await this.entriesStore.getItem('entries');
+
+      const entries = await this.entriesStore.getItem("entries");
       return Array.isArray(entries) ? entries : [];
     } catch (error) {
-      console.error('获取所有记账条目错误:', error);
+      console.error("获取所有记账条目错误:", error);
       return [];
     }
   }
@@ -131,30 +130,43 @@ class LocalForageDataStore {
 
       // 获取所有条目
       let entries = await this.getAllEntries();
-      
+
       // 查找要更新的条目
-      const index = entries.findIndex(entry => entry.id === entryId);
+      const index = entries.findIndex((entry) => entry.id === entryId);
       if (index === -1) {
         console.error(`未找到ID为 ${entryId} 的记账条目`);
         return false;
       }
-      
+
       // 更新条目
       entries[index] = {
         ...entries[index],
-        amount: updatedEntry.amount !== undefined ? parseFloat(updatedEntry.amount) : entries[index].amount,
-        category: updatedEntry.category || updatedEntry.categoryTag || entries[index].category,
-        specific_name: updatedEntry.specific_name || updatedEntry.specificName || entries[index].specific_name,
-        datetime: updatedEntry.datetime || updatedEntry.time || entries[index].datetime,
-        entry_type: updatedEntry.entry_type || updatedEntry.type || entries[index].entry_type
+        amount:
+          updatedEntry.amount !== undefined
+            ? parseFloat(updatedEntry.amount)
+            : entries[index].amount,
+        category:
+          updatedEntry.category ||
+          updatedEntry.categoryTag ||
+          entries[index].category,
+        specific_name:
+          updatedEntry.specific_name ||
+          updatedEntry.specificName ||
+          entries[index].specific_name,
+        datetime:
+          updatedEntry.datetime || updatedEntry.time || entries[index].datetime,
+        entry_type:
+          updatedEntry.entry_type ||
+          updatedEntry.type ||
+          entries[index].entry_type,
       };
-      
+
       // 保存回 localforage
-      await this.entriesStore.setItem('entries', entries);
-      
+      await this.entriesStore.setItem("entries", entries);
+
       return true;
     } catch (error) {
-      console.error('更新记账条目错误:', error);
+      console.error("更新记账条目错误:", error);
       return false;
     }
   }
@@ -172,22 +184,22 @@ class LocalForageDataStore {
 
       // 获取所有条目
       let entries = await this.getAllEntries();
-      
+
       // 过滤掉要删除的条目
-      const newEntries = entries.filter(entry => entry.id !== entryId);
-      
+      const newEntries = entries.filter((entry) => entry.id !== entryId);
+
       // 如果长度相同，说明没有找到要删除的条目
       if (newEntries.length === entries.length) {
         console.error(`未找到ID为 ${entryId} 的记账条目`);
         return false;
       }
-      
+
       // 保存回 localforage
-      await this.entriesStore.setItem('entries', newEntries);
-      
+      await this.entriesStore.setItem("entries", newEntries);
+
       return true;
     } catch (error) {
-      console.error('删除记账条目错误:', error);
+      console.error("删除记账条目错误:", error);
       return false;
     }
   }
@@ -205,39 +217,50 @@ class LocalForageDataStore {
     endDate = null,
     categories = null,
     includeIncome = true,
-    includeExpense = true
+    includeExpense = true,
   ) {
     try {
       if (!this.isInitialized) {
         await this.initializeDb();
       }
 
-      console.log('获取记账条目, 筛选条件:', {
+      console.log("获取记账条目, 筛选条件:", {
         startDate,
         endDate,
         categories,
         includeIncome,
-        includeExpense
+        includeExpense,
       });
 
       // 获取所有条目
       let entries = await this.getAllEntries();
-        // 应用筛选条件
-      const filteredEntries = entries.filter(entry => {        // 日期筛选
+      // 应用筛选条件
+      const filteredEntries = entries.filter((entry) => {
+        // 日期筛选
         try {
           // 处理日期字符串，确保使用相同标准比较
           const entryDateTime = entry.datetime;
           // 统一提取日期部分 (YYYY-MM-DD) 进行比较
-          const entryDatePart = entryDateTime.includes('T') 
-            ? entryDateTime.split('T')[0] 
-            : entryDateTime.split(' ')[0];
-          
+          const entryDatePart = entryDateTime.includes("T")
+            ? entryDateTime.split("T")[0]
+            : entryDateTime.split(" ")[0];
+
           // 将日期提取为可比较的变量
-          const startDatePart = startDate ? (startDate.includes('T') ? startDate.split('T')[0] : startDate.split(' ')[0]) : null;
-          const endDatePart = endDate ? (endDate.includes('T') ? endDate.split('T')[0] : endDate.split(' ')[0]) : null;
-          
-          console.log(`比较日期: ${entryDatePart} 与 ${startDatePart} - ${endDatePart}`);
-          
+          const startDatePart = startDate
+            ? startDate.includes("T")
+              ? startDate.split("T")[0]
+              : startDate.split(" ")[0]
+            : null;
+          const endDatePart = endDate
+            ? endDate.includes("T")
+              ? endDate.split("T")[0]
+              : endDate.split(" ")[0]
+            : null;
+
+          console.log(
+            `比较日期: ${entryDatePart} 与 ${startDatePart} - ${endDatePart}`,
+          );
+
           // 使用字符串比较（YYYY-MM-DD格式可以直接比较）
           if (startDatePart && entryDatePart < startDatePart) {
             return false;
@@ -250,43 +273,51 @@ class LocalForageDataStore {
           return false;
         }
         // 类型筛选
-        if (!includeIncome && entry.entry_type === 'income') {
+        if (!includeIncome && entry.entry_type === "income") {
           return false;
         }
-        if (!includeExpense && entry.entry_type === 'expense') {
+        if (!includeExpense && entry.entry_type === "expense") {
           return false;
         }
-        
+
         // 类别筛选
-        if (categories && categories.length > 0 && !categories.includes(entry.category)) {
+        if (
+          categories &&
+          categories.length > 0 &&
+          !categories.includes(entry.category)
+        ) {
           return false;
         }
-        
+
         return true;
       });
-      
+
       // 按日期降序排序
-      filteredEntries.sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
-      
+      filteredEntries.sort(
+        (a, b) => new Date(b.datetime) - new Date(a.datetime),
+      );
+
       // 转换为API预期的格式
-      return filteredEntries.map(entry => {
+      return filteredEntries.map((entry) => {
         // 确保datetime格式一致 (YYYY-MM-DD HH:MM:SS)
         let formattedDatetime = entry.datetime;
-        if (formattedDatetime.includes('T')) {
-          formattedDatetime = formattedDatetime.replace('T', ' ').substring(0, 19);
+        if (formattedDatetime.includes("T")) {
+          formattedDatetime = formattedDatetime
+            .replace("T", " ")
+            .substring(0, 19);
         }
-        
+
         return {
           id: entry.id,
           amount: entry.amount,
           category: entry.category,
           specific_name: entry.specific_name,
           datetime: formattedDatetime,
-          type: entry.entry_type
+          type: entry.entry_type,
         };
       });
     } catch (error) {
-      console.error('获取记账条目错误:', error);
+      console.error("获取记账条目错误:", error);
       return [];
     }
   }
@@ -305,29 +336,29 @@ class LocalForageDataStore {
       // 构造日期范围查询条件
       const startDate = `${date}T00:00:00`;
       const endDate = `${date}T23:59:59`;
-      
+
       // 获取当天的交易记录
       const entries = await this.getEntries(startDate, endDate);
-      
+
       // 计算收入和支出
       let income = 0;
       let expense = 0;
-      
+
       for (const entry of entries) {
-        if (entry.type === 'income') {
+        if (entry.type === "income") {
           income += parseFloat(entry.amount);
-        } else if (entry.type === 'expense') {
+        } else if (entry.type === "expense") {
           expense += Math.abs(parseFloat(entry.amount));
         }
       }
-      
+
       return {
         income,
         expense,
-        net: income - expense
+        net: income - expense,
       };
     } catch (error) {
-      console.error('获取日统计错误:', error);
+      console.error("获取日统计错误:", error);
       return { income: 0, expense: 0, net: 0 };
     }
   }
@@ -347,33 +378,33 @@ class LocalForageDataStore {
       // 构造日期范围
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0);
-      
+
       // 格式化为ISO字符串
       const startDateStr = startDate.toISOString();
       const endDateStr = endDate.toISOString();
-      
+
       // 获取当月的交易记录
       const entries = await this.getEntries(startDateStr, endDateStr);
-      
+
       // 计算收入和支出
       let income = 0;
       let expense = 0;
-      
+
       for (const entry of entries) {
-        if (entry.type === 'income') {
+        if (entry.type === "income") {
           income += parseFloat(entry.amount);
-        } else if (entry.type === 'expense') {
+        } else if (entry.type === "expense") {
           expense += Math.abs(parseFloat(entry.amount));
         }
       }
-      
+
       return {
         income,
         expense,
-        net: income - expense
+        net: income - expense,
       };
     } catch (error) {
-      console.error('获取月统计错误:', error);
+      console.error("获取月统计错误:", error);
       return { income: 0, expense: 0, net: 0 };
     }
   }
@@ -389,10 +420,10 @@ class LocalForageDataStore {
       }
 
       await this.entriesStore.clear();
-      console.log('所有数据已清除');
+      console.log("所有数据已清除");
       return true;
     } catch (error) {
-      console.error('清除数据错误:', error);
+      console.error("清除数据错误:", error);
       return false;
     }
   }
@@ -402,28 +433,28 @@ class LocalForageDataStore {
    * @returns {Promise<boolean>} 检查结果
    */
   async checkAndRepairDatabase() {
-    console.log('检查数据库状态...');
-    
+    console.log("检查数据库状态...");
+
     try {
       if (!this.isInitialized) {
         await this.initializeDb();
       }
-      
+
       // 尝试读取条目以验证数据库完整性
       const entries = await this.getAllEntries();
       console.log(`数据库正常，共有 ${entries.length} 条记录`);
       return true;
     } catch (error) {
-      console.error('数据库检查失败，尝试修复:', error);
-      
+      console.error("数据库检查失败，尝试修复:", error);
+
       try {
         // 重新初始化
         this.isInitialized = false;
         await this.initializeDb();
-        console.log('数据库已重新初始化');
+        console.log("数据库已重新初始化");
         return true;
       } catch (repairError) {
-        console.error('修复数据库失败:', repairError);
+        console.error("修复数据库失败:", repairError);
         return false;
       }
     }

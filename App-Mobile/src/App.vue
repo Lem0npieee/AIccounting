@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <router-view/>
+    <router-view />
     <div class="nav-bottom">
       <tab-bar></tab-bar>
     </div>
@@ -8,12 +8,12 @@
 </template>
 
 <script setup>
-import TabBar from './components/common/TabBar.vue'
+import TabBar from "./components/common/TabBar.vue";
 </script>
 
 <style>
 #app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
+  font-family: "Avenir", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;

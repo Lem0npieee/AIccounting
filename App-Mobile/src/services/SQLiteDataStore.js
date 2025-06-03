@@ -21,19 +21,19 @@ class SQLiteDataStore {
       try {
         // 检查cordova-sqlite-storage插件是否可用
         if (!window.sqlitePlugin) {
-          console.error('SQLite插件未加载');
-          reject(new Error('SQLite插件未加载'));
+          console.error("SQLite插件未加载");
+          reject(new Error("SQLite插件未加载"));
           return;
         }
 
         this.db = window.sqlitePlugin.openDatabase({
-          name: 'aiccounting.db',
-          location: 'default'
+          name: "aiccounting.db",
+          location: "default",
         });
 
         resolve(true);
       } catch (error) {
-        console.error('数据库连接错误:', error);
+        console.error("数据库连接错误:", error);
         reject(error);
       }
     });
@@ -51,7 +51,7 @@ class SQLiteDataStore {
 
       return new Promise((resolve, reject) => {
         this.db.transaction(
-          tx => {
+          (tx) => {
             // 创建记账条目表
             tx.executeSql(`
               CREATE TABLE IF NOT EXISTS entries (
@@ -65,18 +65,18 @@ class SQLiteDataStore {
               )
             `);
           },
-          error => {
-            console.error('初始化数据库错误:', error);
+          (error) => {
+            console.error("初始化数据库错误:", error);
             reject(error);
           },
           () => {
             this.isInitialized = true;
             resolve(true);
-          }
+          },
         );
       });
     } catch (error) {
-      console.error('初始化数据库连接错误:', error);
+      console.error("初始化数据库连接错误:", error);
       return false;
     }
   }
@@ -94,7 +94,7 @@ class SQLiteDataStore {
 
       return new Promise((resolve, reject) => {
         this.db.transaction(
-          tx => {
+          (tx) => {
             const sql = `
               INSERT INTO entries (amount, category, specific_name, datetime, entry_type)
               VALUES (?, ?, ?, ?, ?)
@@ -104,23 +104,23 @@ class SQLiteDataStore {
               [
                 entry.amount,
                 entry.category,
-                entry.specific_name || '',
+                entry.specific_name || "",
                 entry.datetime,
-                entry.type
+                entry.type,
               ],
               (tx, results) => {
                 resolve(results.insertId);
-              }
+              },
             );
           },
-          error => {
-            console.error('添加记账条目错误:', error);
+          (error) => {
+            console.error("添加记账条目错误:", error);
             reject(error);
-          }
+          },
         );
       });
     } catch (error) {
-      console.error('添加记账条目连接错误:', error);
+      console.error("添加记账条目连接错误:", error);
       return null;
     }
   }
@@ -139,7 +139,7 @@ class SQLiteDataStore {
 
       return new Promise((resolve, reject) => {
         this.db.transaction(
-          tx => {
+          (tx) => {
             const sql = `
               UPDATE entries SET
               amount = ?,
@@ -154,24 +154,24 @@ class SQLiteDataStore {
               [
                 updatedEntry.amount,
                 updatedEntry.category,
-                updatedEntry.specific_name || '',
+                updatedEntry.specific_name || "",
                 updatedEntry.datetime,
                 updatedEntry.type,
-                entryId
+                entryId,
               ],
               (tx, results) => {
                 resolve(results.rowsAffected > 0);
-              }
+              },
             );
           },
-          error => {
-            console.error('更新记账条目错误:', error);
+          (error) => {
+            console.error("更新记账条目错误:", error);
             reject(error);
-          }
+          },
         );
       });
     } catch (error) {
-      console.error('更新记账条目连接错误:', error);
+      console.error("更新记账条目连接错误:", error);
       return false;
     }
   }
@@ -189,24 +189,20 @@ class SQLiteDataStore {
 
       return new Promise((resolve, reject) => {
         this.db.transaction(
-          tx => {
-            const sql = 'DELETE FROM entries WHERE id = ?';
-            tx.executeSql(
-              sql,
-              [entryId],
-              (tx, results) => {
-                resolve(results.rowsAffected > 0);
-              }
-            );
+          (tx) => {
+            const sql = "DELETE FROM entries WHERE id = ?";
+            tx.executeSql(sql, [entryId], (tx, results) => {
+              resolve(results.rowsAffected > 0);
+            });
           },
-          error => {
-            console.error('删除记账条目错误:', error);
+          (error) => {
+            console.error("删除记账条目错误:", error);
             reject(error);
-          }
+          },
         );
       });
     } catch (error) {
-      console.error('删除记账条目连接错误:', error);
+      console.error("删除记账条目连接错误:", error);
       return false;
     }
   }
@@ -225,7 +221,7 @@ class SQLiteDataStore {
     endDate = null,
     categories = null,
     includeIncome = true,
-    includeExpense = true
+    includeExpense = true,
   ) {
     try {
       if (!this.isInitialized) {
@@ -237,16 +233,16 @@ class SQLiteDataStore {
 
       // 构建SQL查询条件
       if (startDate) {
-        conditions.push('datetime >= ?');
+        conditions.push("datetime >= ?");
         params.push(startDate);
       }
       if (endDate) {
-        conditions.push('datetime <= ?');
+        conditions.push("datetime <= ?");
         params.push(endDate);
       }
       if (categories && categories.length > 0) {
         // SQLite参数占位符只能是?，不能像MySQL那样使用?命名参数
-        const placeholders = categories.map(() => '?').join(', ');
+        const placeholders = categories.map(() => "?").join(", ");
         conditions.push(`category IN (${placeholders})`);
         params = [...params, ...categories];
       }
@@ -261,47 +257,44 @@ class SQLiteDataStore {
       }
 
       if (typeConditions.length > 0) {
-        conditions.push(`(${typeConditions.join(' OR ')})`);
+        conditions.push(`(${typeConditions.join(" OR ")})`);
       }
 
       // 构建完整SQL
-      let sql = 'SELECT id, amount, category, specific_name, datetime, entry_type FROM entries';
+      let sql =
+        "SELECT id, amount, category, specific_name, datetime, entry_type FROM entries";
       if (conditions.length > 0) {
-        sql += ' WHERE ' + conditions.join(' AND ');
+        sql += " WHERE " + conditions.join(" AND ");
       }
-      sql += ' ORDER BY datetime DESC';
+      sql += " ORDER BY datetime DESC";
 
       return new Promise((resolve, reject) => {
         this.db.transaction(
-          tx => {
-            tx.executeSql(
-              sql,
-              params,
-              (tx, results) => {
-                const entries = [];
-                for (let i = 0; i < results.rows.length; i++) {
-                  const row = results.rows.item(i);
-                  entries.push({
-                    id: row.id,
-                    amount: parseFloat(row.amount),
-                    category: row.category,
-                    specific_name: row.specific_name,
-                    datetime: row.datetime,
-                    type: row.entry_type
-                  });
-                }
-                resolve(entries);
+          (tx) => {
+            tx.executeSql(sql, params, (tx, results) => {
+              const entries = [];
+              for (let i = 0; i < results.rows.length; i++) {
+                const row = results.rows.item(i);
+                entries.push({
+                  id: row.id,
+                  amount: parseFloat(row.amount),
+                  category: row.category,
+                  specific_name: row.specific_name,
+                  datetime: row.datetime,
+                  type: row.entry_type,
+                });
               }
-            );
+              resolve(entries);
+            });
           },
-          error => {
-            console.error('获取记账条目错误:', error);
+          (error) => {
+            console.error("获取记账条目错误:", error);
             reject(error);
-          }
+          },
         );
       });
     } catch (error) {
-      console.error('获取记账条目连接错误:', error);
+      console.error("获取记账条目连接错误:", error);
       return [];
     }
   }
@@ -323,7 +316,7 @@ class SQLiteDataStore {
 
       return new Promise((resolve, reject) => {
         this.db.transaction(
-          tx => {
+          (tx) => {
             // 查询收入总和
             tx.executeSql(
               "SELECT COALESCE(SUM(amount), 0) as total FROM entries WHERE datetime BETWEEN ? AND ? AND entry_type = 'income'",
@@ -337,25 +330,25 @@ class SQLiteDataStore {
                   [startDate, endDate],
                   (tx, expenseResults) => {
                     const expense = expenseResults.rows.item(0).total || 0;
-                    
+
                     resolve({
                       income: parseFloat(income),
                       expense: parseFloat(expense),
-                      net: parseFloat(income) - parseFloat(expense)
+                      net: parseFloat(income) - parseFloat(expense),
                     });
-                  }
+                  },
                 );
-              }
+              },
             );
           },
-          error => {
-            console.error('获取日统计错误:', error);
+          (error) => {
+            console.error("获取日统计错误:", error);
             reject(error);
-          }
+          },
         );
       });
     } catch (error) {
-      console.error('获取日统计连接错误:', error);
+      console.error("获取日统计连接错误:", error);
       return { income: 0, expense: 0, net: 0 };
     }
   }
@@ -376,50 +369,47 @@ class SQLiteDataStore {
       let params = [];
 
       if (startDate) {
-        conditions.push('datetime >= ?');
+        conditions.push("datetime >= ?");
         params.push(startDate);
       }
       if (endDate) {
-        conditions.push('datetime <= ?');
+        conditions.push("datetime <= ?");
         params.push(endDate);
       }
 
       // 按支出类别分组统计
-      let sql = "SELECT category, SUM(ABS(amount)) as total FROM entries WHERE entry_type = 'expense'";
+      let sql =
+        "SELECT category, SUM(ABS(amount)) as total FROM entries WHERE entry_type = 'expense'";
 
       if (conditions.length > 0) {
-        sql += ' AND ' + conditions.join(' AND ');
+        sql += " AND " + conditions.join(" AND ");
       }
 
-      sql += ' GROUP BY category ORDER BY total DESC';
+      sql += " GROUP BY category ORDER BY total DESC";
 
       return new Promise((resolve, reject) => {
         this.db.transaction(
-          tx => {
-            tx.executeSql(
-              sql,
-              params,
-              (tx, results) => {
-                const stats = [];
-                for (let i = 0; i < results.rows.length; i++) {
-                  const row = results.rows.item(i);
-                  stats.push({
-                    category: row.category,
-                    amount: parseFloat(row.total)
-                  });
-                }
-                resolve(stats);
+          (tx) => {
+            tx.executeSql(sql, params, (tx, results) => {
+              const stats = [];
+              for (let i = 0; i < results.rows.length; i++) {
+                const row = results.rows.item(i);
+                stats.push({
+                  category: row.category,
+                  amount: parseFloat(row.total),
+                });
               }
-            );
+              resolve(stats);
+            });
           },
-          error => {
-            console.error('获取类别统计错误:', error);
+          (error) => {
+            console.error("获取类别统计错误:", error);
             reject(error);
-          }
+          },
         );
       });
     } catch (error) {
-      console.error('获取类别统计连接错误:', error);
+      console.error("获取类别统计连接错误:", error);
       return [];
     }
   }
