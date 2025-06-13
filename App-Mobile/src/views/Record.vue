@@ -288,14 +288,15 @@ const sendMessage = async () => {
         content: response.replyText,
         isUser: false,
         timestamp: new Date().toISOString(),
-      });
-
-      // 如果有记账条目
-      if (response.ledgerEntry) {
-        // 确保ledgerEntry始终是数组
-        const entries = Array.isArray(response.ledgerEntry)
-          ? response.ledgerEntry
-          : [response.ledgerEntry];
+      });      // 如果有记账条目
+      if (response.ledgerEntries || response.ledgerEntry) {
+        // 优先使用ledgerEntries，如果没有则尝试使用ledgerEntry
+        // 并确保处理的始终是数组形式
+        const entries = response.ledgerEntries 
+          ? response.ledgerEntries 
+          : (Array.isArray(response.ledgerEntry) 
+              ? response.ledgerEntry 
+              : [response.ledgerEntry]);
 
         // 简单地追加记账卡片到消息列表末尾
         for (const entry of entries) {

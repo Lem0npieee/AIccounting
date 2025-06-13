@@ -245,16 +245,21 @@ export default {
             aiResponse.replyText.includes("敏感内容") ||
             aiResponse.replyText.includes("非法") ||
             aiResponse.replyText.includes("抱歉，您的消息") ||
-            aiResponse.replyText.includes("重新输入");
-
-          // 如果有记账信息，且没有检测到敏感内容，则显示记账卡片
-          if (aiResponse.ledgerEntry && !sensitiveContentDetected) {
-            // 显示记账卡片 (数据已经在后端处理时保存到数据库)
-            this.messages.push({
-              type: "ledger",
-              isUser: false,
-              ledgerEntry: aiResponse.ledgerEntry,
-              timestamp: new Date().toISOString(),
+            aiResponse.replyText.includes("重新输入");          // 如果有记账信息，且没有检测到敏感内容，则显示记账卡片
+          if ((aiResponse.ledgerEntries || aiResponse.ledgerEntry) && !sensitiveContentDetected) {
+            // 兼容处理单条和多条记账信息
+            const entries = aiResponse.ledgerEntries || [aiResponse.ledgerEntry];
+            
+            // 为每条记账信息创建一个卡片
+            entries.forEach(entry => {
+              if (entry) {
+                this.messages.push({
+                  type: "ledger",
+                  isUser: false,
+                  ledgerEntry: entry,
+                  timestamp: new Date().toISOString(),
+                });
+              }
             });
 
             this.$nextTick(() => {

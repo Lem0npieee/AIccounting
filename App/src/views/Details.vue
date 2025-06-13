@@ -5,9 +5,7 @@
       <button class="nav-button" @click="changeMonth(-1)">
         <span>&lt;</span>
       </button>
-      <span class="current-month"
-        >{{ currentYear }}-{{ String(currentMonth).padStart(2, "0") }}</span
-      >
+      <span class="current-month">{{ currentYear }}-{{ String(currentMonth).padStart(2, '0') }}</span>
       <button class="nav-button" @click="changeMonth(1)">
         <span>&gt;</span>
       </button>
@@ -17,7 +15,7 @@
     <div class="summary-card">
       <div class="month-expense-label">本月支出(元)</div>
       <div class="month-expense-amount">¥ {{ summary.expense.toFixed(2) }}</div>
-
+      
       <div class="summary-details">
         <div class="income-column">
           <div class="detail-label">本月收入</div>
@@ -25,7 +23,7 @@
         </div>
         <div class="balance-column">
           <div class="detail-label">月结余</div>
-          <div class="detail-amount" :class="{ negative: summary.balance < 0 }">
+          <div class="detail-amount" :class="{ 'negative': summary.balance < 0 }">
             {{ summary.balance.toFixed(2) }}
           </div>
         </div>
@@ -38,61 +36,44 @@
       <div v-if="isLoading" class="loading-state">
         <span>加载中...</span>
       </div>
-
+      
       <!-- 错误提示 -->
       <div v-else-if="error" class="error-state">
         <p>{{ error }}</p>
         <button @click="fetchMonthlyData" class="retry-btn">重试</button>
       </div>
-
+      
       <!-- 正常数据显示 -->
       <template v-else>
         <div v-for="group in entries" :key="group.date" class="day-group-card">
           <!-- 日期头部 -->
           <div class="day-header">
             <div class="day-info">
-              <span class="date">{{
-                formatDateHeader(group.date, group.isToday, group.weekday)
-              }}</span>
+              <span class="date">{{ formatDateHeader(group.date, group.isToday, group.weekday) }}</span>
             </div>
             <div class="day-summary">
-              <span class="income" v-if="group.income > 0"
-                >收入: ¥{{ group.income.toFixed(2) }}</span
-              >
-              <span class="expense" v-if="group.expense > 0"
-                >支出: ¥{{ group.expense.toFixed(2) }}</span
-              >
+              <span class="income" v-if="group.income > 0">收入: ¥{{ group.income.toFixed(2) }}</span>
+              <span class="expense" v-if="group.expense > 0">支出: ¥{{ group.expense.toFixed(2) }}</span>
             </div>
           </div>
 
           <!-- 该日期的明细条目 -->
           <div class="entry-list">
-            <div
-              v-for="entry in group.entries"
-              :key="entry.id"
-              class="entry-item"
-            >
+            <div v-for="entry in group.entries" :key="entry.id" class="entry-item">
               <div class="entry-icon" :class="getCategoryClass(entry.category)">
                 {{ getCategoryIcon(entry.category) }}
               </div>
               <div class="entry-info">
                 <div class="entry-category">{{ entry.category }}</div>
-                <div class="entry-description">
-                  {{ entry.specific_name || "无描述" }}
-                </div>
+                <div class="entry-description">{{ entry.specific_name || '无描述' }}</div>
               </div>
-              <div
-                class="entry-amount"
-                :class="{ income: entry.type === 'income' }"
-              >
-                {{ entry.type === "income" ? "+" : "-" }}¥{{
-                  entry.amount.toFixed(2)
-                }}
+              <div class="entry-amount" :class="{ 'income': entry.type === 'income' }">
+                {{ entry.type === 'income' ? '+' : '-' }}¥{{ entry.amount.toFixed(2) }}
               </div>
             </div>
           </div>
         </div>
-
+        
         <!-- 没有数据时的占位符 -->
         <div v-if="entries.length === 0" class="no-data">
           <p>本月暂无交易记录</p>
@@ -104,10 +85,10 @@
 </template>
 
 <script>
-import axios from "axios";
+import axios from 'axios'
 
 export default {
-  name: "Details",
+  name: 'Details',
   data() {
     return {
       currentYear: new Date().getFullYear(),
@@ -115,152 +96,129 @@ export default {
       summary: {
         expense: 0,
         income: 0,
-        balance: 0,
+        balance: 0
       },
       entries: [],
-      apiBaseUrl: "http://localhost:5000",
+      apiBaseUrl: 'http://localhost:5000',
       isLoading: false,
-      error: null,
-    };
+      error: null
+    }
   },
   mounted() {
-    this.fetchMonthlyData();
+    this.fetchMonthlyData()
   },
   methods: {
     // 切换月份
     changeMonth(delta) {
-      let newMonth = this.currentMonth + delta;
+      let newMonth = this.currentMonth + delta
       if (newMonth > 12) {
-        this.currentMonth = 1;
-        this.currentYear++;
+        this.currentMonth = 1
+        this.currentYear++
       } else if (newMonth < 1) {
-        this.currentMonth = 12;
-        this.currentYear--;
+        this.currentMonth = 12
+        this.currentYear--
       } else {
-        this.currentMonth = newMonth;
+        this.currentMonth = newMonth
       }
-
-      this.fetchMonthlyData();
+      
+      this.fetchMonthlyData()
     },
-
+    
     // 获取月度数据
     async fetchMonthlyData() {
-      this.isLoading = true;
-      this.error = null;
+      this.isLoading = true
+      this.error = null
       // 调试输出请求URL和参数
-      const startDate = `${this.currentYear}-${String(this.currentMonth).padStart(2, "0")}-01`;
-      const lastDay = new Date(
-        this.currentYear,
-        this.currentMonth,
-        0,
-      ).getDate();
-      const endDate = `${this.currentYear}-${String(this.currentMonth).padStart(2, "0")}-${lastDay}`;
-      console.log(
-        "请求URL:",
-        `${this.apiBaseUrl}/get_transaction_list_for_frontend`,
-      );
-      console.log("请求参数:", {
+      const startDate = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-01`
+      const lastDay = new Date(this.currentYear, this.currentMonth, 0).getDate()
+      const endDate = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${lastDay}`
+      console.log('请求URL:', `${this.apiBaseUrl}/get_transaction_list_for_frontend`)
+      console.log('请求参数:', {
         start_date: startDate,
         end_date: endDate,
-        transaction_type: "all",
-      });
-
+        transaction_type: 'all'
+      })
+      
       try {
         // 调用后端API获取数据
-        const response = await axios.get(
-          `${this.apiBaseUrl}/get_transaction_list_for_frontend`,
-          {
-            params: {
-              start_date: startDate,
-              end_date: endDate,
-              transaction_type: "all",
-            },
-          },
-        );
-
+        const response = await axios.get(`${this.apiBaseUrl}/get_transaction_list_for_frontend`, {
+          params: {
+            start_date: startDate,
+            end_date: endDate,
+            transaction_type: 'all'
+          }
+        })
+        
         if (response.data.error) {
-          throw new Error(response.data.error);
+          throw new Error(response.data.error)
         }
-
+        
         // 更新汇总数据
         this.summary = {
           income: response.data.summary.total_income,
           expense: response.data.summary.total_expense,
-          balance: response.data.summary.net_income,
-        };
-
+          balance: response.data.summary.net_income
+        }
+        
         // 处理交易记录，按日期分组
-        const groupedEntries = this.groupEntriesByDate(
-          response.data.transactions,
-        );
-        this.entries = groupedEntries;
+        const groupedEntries = this.groupEntriesByDate(response.data.transactions)
+        this.entries = groupedEntries
+        
       } catch (error) {
-        console.error("获取月度数据失败:", error);
-        this.error = "获取数据失败，请刷新重试";
+        console.error('获取月度数据失败:', error)
+        this.error = '获取数据失败，请刷新重试'
       } finally {
-        this.isLoading = false;
+        this.isLoading = false
       }
     },
-
+    
     // 格式化日期头部
     formatDateHeader(dateStr, isToday, weekday) {
-      if (!dateStr) return "加载中..."; // 添加默认返回值
-
+      if (!dateStr) return '加载中...';  // 添加默认返回值
+      
       try {
         // 尝试解析日期字符串
         let date;
-        if (dateStr.includes(" ")) {
+        if (dateStr.includes(' ')) {
           // 如果是 datetime 格式 (YYYY-MM-DD HH:mm:ss)
           date = new Date(dateStr);
         } else {
           // 如果是 date 格式 (YYYY-MM-DD)
-          const [year, month, day] = dateStr
-            .split("-")
-            .map((num) => parseInt(num));
+          const [year, month, day] = dateStr.split('-').map(num => parseInt(num));
           date = new Date(year, month - 1, day);
         }
 
         if (isNaN(date.getTime())) {
-          console.error("无效的日期:", dateStr);
+          console.error('无效的日期:', dateStr);
           return dateStr;
         }
 
         const month = date.getMonth() + 1;
         const day = date.getDate();
-        const weekDays = [
-          "周日",
-          "周一",
-          "周二",
-          "周三",
-          "周四",
-          "周五",
-          "周六",
-        ];
+        const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
         const weekDayStr = weekDays[date.getDay()];
-
+        
         if (isToday) {
           return `今天 ${month}月${day}日 ${weekDayStr}`;
         } else {
           return `${month}月${day}日 ${weekDayStr}`;
         }
       } catch (error) {
-        console.error("日期格式化错误:", error);
-        return dateStr || "未知日期"; // 添加默认返回值
+        console.error('日期格式化错误:', error);
+        return dateStr || '未知日期';  // 添加默认返回值
       }
     },
 
     // 判断是否是今天
     isToday(dateStr) {
       if (!dateStr) return false;
-
+      
       try {
         let date;
-        if (dateStr.includes(" ")) {
+        if (dateStr.includes(' ')) {
           date = new Date(dateStr);
         } else {
-          const [year, month, day] = dateStr
-            .split("-")
-            .map((num) => parseInt(num));
+          const [year, month, day] = dateStr.split('-').map(num => parseInt(num));
           date = new Date(year, month - 1, day);
         }
 
@@ -269,76 +227,64 @@ export default {
         }
 
         const today = new Date();
-        return (
-          date.getFullYear() === today.getFullYear() &&
-          date.getMonth() === today.getMonth() &&
-          date.getDate() === today.getDate()
-        );
+        return date.getFullYear() === today.getFullYear() &&
+               date.getMonth() === today.getMonth() &&
+               date.getDate() === today.getDate();
       } catch (error) {
-        console.error("日期比较错误:", error);
+        console.error('日期比较错误:', error);
         return false;
       }
     },
 
     // 获取星期几
     getWeekday(dateStr) {
-      if (!dateStr) return "";
-
+      if (!dateStr) return '';
+      
       try {
         let date;
-        if (dateStr.includes(" ")) {
+        if (dateStr.includes(' ')) {
           date = new Date(dateStr);
         } else {
-          const [year, month, day] = dateStr
-            .split("-")
-            .map((num) => parseInt(num));
+          const [year, month, day] = dateStr.split('-').map(num => parseInt(num));
           date = new Date(year, month - 1, day);
         }
 
         if (isNaN(date.getTime())) {
-          return "";
+          return '';
         }
 
-        const weekDays = [
-          "周日",
-          "周一",
-          "周二",
-          "周三",
-          "周四",
-          "周五",
-          "周六",
-        ];
+        const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
         return weekDays[date.getDay()];
       } catch (error) {
-        console.error("获取星期错误:", error);
-        return "";
+        console.error('获取星期错误:', error);
+        return '';
       }
     },
 
     // 按日期分组交易记录
     groupEntriesByDate(transactions) {
       if (!Array.isArray(transactions)) {
-        console.error("传入的 transactions 不是数组:", transactions);
+        console.error('传入的 transactions 不是数组:', transactions);
         return [];
       }
 
       const groups = {};
-
-      transactions.forEach((transaction) => {
+      
+      transactions.forEach(transaction => {
         if (!transaction) return;
 
         // 处理日期
-        let dateStr = "";
+        let dateStr = '';
         if (transaction.datetime) {
           // 从 datetime 中提取日期部分
-          dateStr = transaction.datetime.split(" ")[0];
+          dateStr = transaction.datetime.split(' ')[0];
         } else if (transaction.date) {
           // 如果有 date 字段就直接使用
           dateStr = transaction.date;
         }
 
         if (!dateStr) {
-          console.error("无法获取日期:", transaction);
+          console.error('无法获取日期:', transaction);
           return;
         }
 
@@ -349,85 +295,85 @@ export default {
             weekday: this.getWeekday(dateStr),
             income: 0,
             expense: 0,
-            entries: [],
+            entries: []
           };
         }
-
+        
         // 更新日汇总
         const amount = parseFloat(transaction.amount) || 0;
-        if (transaction.type === "income") {
+        if (transaction.type === 'income') {
           groups[dateStr].income += Math.abs(amount);
         } else {
           groups[dateStr].expense += Math.abs(amount);
         }
-
+        
         // 添加交易记录
         groups[dateStr].entries.push({
           ...transaction,
-          amount: Math.abs(amount),
+          amount: Math.abs(amount)
         });
       });
-
+      
       // 转换为数组并按日期倒序排序
       return Object.values(groups).sort((a, b) => {
         return new Date(b.date) - new Date(a.date);
       });
     },
-
+    
     // 获取分类图标
     getCategoryIcon(category) {
       const icons = {
         // 收入类
-        工资: "💰",
-        奖金: "🏆",
-        补贴: "💵",
-        兼职: "💼",
-        投资: "📈",
-        其他收入: "📝",
-
+        '工资': '💰',
+        '奖金': '🏆',
+        '补贴': '💵',
+        '兼职': '💼',
+        '投资': '📈',
+        '其他收入': '📝',
+        
         // 支出类
-        餐饮: "🍔",
-        购物: "🛍️",
-        交通: "🚗",
-        住房: "🏠",
-        娱乐: "🎭",
-        教育: "📚",
-        医疗: "💊",
-        日用品: "🧻",
-        其他支出: "📝",
-      };
-      return icons[category] || "📝";
+        '餐饮': '🍔',
+        '购物': '🛍️',
+        '交通': '🚗',
+        '住房': '🏠',
+        '娱乐': '🎭',
+        '教育': '📚',
+        '医疗': '💊',
+        '日用品': '🧻',
+        '其他支出': '📝'
+      }
+      return icons[category] || '📝'
     },
-
+    
     // 获取分类样式类名
     getCategoryClass(category) {
-      let baseClass = "category-";
-
+      let baseClass = 'category-'
+      
       const categoryMapping = {
         // 收入类
-        工资: "salary",
-        奖金: "bonus",
-        补贴: "subsidy",
-        兼职: "parttime",
-        投资: "investment",
-        其他收入: "other-income",
-
+        '工资': 'salary',
+        '奖金': 'bonus',
+        '补贴': 'subsidy',
+        '兼职': 'parttime',
+        '投资': 'investment',
+        '其他收入': 'other-income',
+        
         // 支出类
-        餐饮: "food",
-        购物: "shopping",
-        交通: "transport",
-        住房: "housing",
-        娱乐: "entertainment",
-        教育: "education",
-        医疗: "medical",
-        日用品: "daily",
-        其他支出: "other-expense",
-      };
-
-      return baseClass + (categoryMapping[category] || "other");
-    },
-  },
-};
+        '餐饮': 'food',
+        '购物': 'shopping',
+        '交通': 'transport',
+        '住房': 'housing',
+        '娱乐': 'entertainment',
+        '教育': 'education',
+        '医疗': 'medical',
+        '日用品': 'daily',
+        '其他支出': 'other-expense'
+      }
+      
+      return baseClass + (categoryMapping[category] || 'other')
+    }
+  }
+}
 </script>
 
 <style scoped>
@@ -476,7 +422,7 @@ export default {
 
 /* 月度汇总卡片 */
 .summary-card {
-  background-color: #ffd700;
+  background-color: #FFD700;
   border-radius: 15px;
   padding: 20px;
   width: 100%;
@@ -505,8 +451,7 @@ export default {
   padding-top: 15px;
 }
 
-.income-column,
-.balance-column {
+.income-column, .balance-column {
   text-align: center;
 }
 
@@ -566,12 +511,12 @@ export default {
 }
 
 .day-summary .income {
-  color: #67c23a;
+  color: #67C23A;
   margin-right: 10px;
 }
 
 .day-summary .expense {
-  color: #f56c6c;
+  color: #F56C6C;
 }
 
 /* 明细条目 */
@@ -619,11 +564,11 @@ export default {
 .entry-amount {
   font-size: 16px;
   font-weight: 500;
-  color: #f56c6c;
+  color: #F56C6C;
 }
 
 .entry-amount.income {
-  color: #67c23a;
+  color: #67C23A;
 }
 
 /* 加载状态 */
@@ -637,13 +582,13 @@ export default {
 .error-state {
   text-align: center;
   padding: 20px;
-  color: #f56c6c;
+  color: #F56C6C;
 }
 
 .retry-btn {
   margin-top: 10px;
   padding: 8px 20px;
-  background-color: #409eff;
+  background-color: #409EFF;
   color: white;
   border: none;
   border-radius: 4px;
@@ -668,54 +613,24 @@ export default {
 
 .no-data p:last-child {
   font-size: 14px;
-  color: #c0c4cc;
+  color: #C0C4CC;
 }
 
 /* 分类样式 */
-.category-salary {
-  background-color: #e6f7ff;
-}
-.category-bonus {
-  background-color: #f6ffed;
-}
-.category-subsidy {
-  background-color: #fff7e6;
-}
-.category-parttime {
-  background-color: #f9f0ff;
-}
-.category-investment {
-  background-color: #fff1f0;
-}
-.category-other-income {
-  background-color: #f5f5f5;
-}
+.category-salary { background-color: #E6F7FF; }
+.category-bonus { background-color: #F6FFED; }
+.category-subsidy { background-color: #FFF7E6; }
+.category-parttime { background-color: #F9F0FF; }
+.category-investment { background-color: #FFF1F0; }
+.category-other-income { background-color: #F5F5F5; }
 
-.category-food {
-  background-color: #fff1f0;
-}
-.category-shopping {
-  background-color: #f6ffed;
-}
-.category-transport {
-  background-color: #e6f7ff;
-}
-.category-housing {
-  background-color: #fff7e6;
-}
-.category-entertainment {
-  background-color: #f9f0ff;
-}
-.category-education {
-  background-color: #f5f5f5;
-}
-.category-medical {
-  background-color: #fff1f0;
-}
-.category-daily {
-  background-color: #f6ffed;
-}
-.category-other-expense {
-  background-color: #f5f5f5;
-}
+.category-food { background-color: #FFF1F0; }
+.category-shopping { background-color: #F6FFED; }
+.category-transport { background-color: #E6F7FF; }
+.category-housing { background-color: #FFF7E6; }
+.category-entertainment { background-color: #F9F0FF; }
+.category-education { background-color: #F5F5F5; }
+.category-medical { background-color: #FFF1F0; }
+.category-daily { background-color: #F6FFED; }
+.category-other-expense { background-color: #F5F5F5; }
 </style>

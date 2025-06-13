@@ -355,22 +355,22 @@ class AIAccountant:
                     if entry_id:
                         success_count += 1
                 
-                if success_count > 0:
-                    # 生成回复，告知用户已成功添加多条记账条目
+                if success_count > 0:                # 生成回复，告知用户已成功添加多条记账条目
                     ai_reply = self._generate_ai_response(extracted_info, action_taken=f"添加了{success_count}条记录")
-                    # 返回第一个条目的结构化信息（如需全部可扩展）
-                    first_entry = extracted_info[0] if extracted_info else None
-                    ledger_entry = None
-                    if first_entry:
-                        ledger_entry = {
-                            "amount": first_entry.get("amount"),
-                            "categoryTag": first_entry.get("category") or "其他",
-                            "specificName": first_entry.get("specific_name") or "",
-                            "time": first_entry.get("datetime")
-                        }
+                    
+                    # 返回所有条目的结构化信息
+                    ledger_entries = []
+                    for entry in extracted_info:
+                        ledger_entries.append({
+                            "amount": entry.get("amount"),
+                            "categoryTag": entry.get("category") or "其他",
+                            "specificName": entry.get("specific_name") or "",
+                            "time": entry.get("datetime")
+                        })
+                    
                     return {
                         "replyText": ai_reply,
-                        "ledgerEntry": ledger_entry
+                        "ledgerEntries": ledger_entries
                     }
                 else:
                     return "很抱歉，记账时出现了问题。请稍后再试。"
