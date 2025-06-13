@@ -470,8 +470,22 @@ def get_chart_data_from_filters(filters_dict):
 @app.route('/get_transaction_list_for_frontend', methods=['GET'])
 def get_transaction_list_for_frontend_route():
     try:
-        transactions = get_filtered_transaction_list_api()
-        summary = get_summary_statistics_api()
+        # 从请求参数中获取日期范围
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        transaction_type = request.args.get('transaction_type', 'all')
+        
+        # 获取筛选后的交易记录
+        transactions = get_filtered_transaction_list_api(
+            start_date_str=start_date,
+            end_date_str=end_date
+        )
+        
+        # 获取对应时间范围的汇总数据
+        summary = get_summary_statistics_api(
+            start_date_str=start_date,
+            end_date_str=end_date
+        )
         
         # 序列化datetime对象
         serialized_transactions = []
@@ -529,23 +543,31 @@ def api_chat():
         elif isinstance(ai_response, dict):
             # 包含记账信息的回复
             reply_text = ai_response.get('replyText', '')
-            ledger_entry = ai_response.get('ledgerEntry')
             
-            # 如果有记账信息，自动保存到数据库
+            # 检查是否有多条记账条目
+            ledger_entries = ai_response.get('ledgerEntries', [])
+            
+            # 兼容旧版API，检查是否有单条记账条目
+            ledger_entry = ai_response.get('ledgerEntry')
             if ledger_entry and isinstance(ledger_entry, dict):
+                ledger_entries = [ledger_entry]
+                  # 统一处理多条记账信息的情况
+            processed_entries = []
+            for entry in ledger_entries:
                 try:
                     db_store.add_entry({
-                        'amount': ledger_entry.get("amount"),
-                        'category': ledger_entry.get("categoryTag") or "其他",
-                        'specific_name': ledger_entry.get("specificName") or "",
-                        'datetime': ledger_entry.get("time") or datetime.datetime.now()
+                        'amount': entry.get("amount"),
+                        'category': entry.get("categoryTag") or "其他",
+                        'specific_name': entry.get("specificName") or "",
+                        'datetime': entry.get("time") or datetime.datetime.now()
                     })
+                    processed_entries.append(entry)
                 except Exception as e:
                     print(f"保存记账信息失败: {e}")
-            
+              # 返回多条记账信息
             return jsonify({
                 "replyText": reply_text,
-                "ledgerEntry": ledger_entry
+                "ledgerEntries": processed_entries
             })
         else:
             return jsonify({

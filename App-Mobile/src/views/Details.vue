@@ -5,7 +5,9 @@
       <button class="nav-button" @click="changeMonth(-1)">
         <span>&lt;</span>
       </button>
-      <span class="current-month">{{ currentYear }}-{{ String(currentMonth).padStart(2, '0') }}</span>
+      <span class="current-month"
+        >{{ currentYear }}-{{ String(currentMonth).padStart(2, "0") }}</span
+      >
       <button class="nav-button" @click="changeMonth(1)">
         <span>&gt;</span>
       </button>
@@ -15,7 +17,7 @@
     <div class="summary-card">
       <div class="month-expense-label">本月支出(元)</div>
       <div class="month-expense-amount">¥ {{ summary.expense.toFixed(2) }}</div>
-      
+
       <div class="summary-details">
         <div class="income-column">
           <div class="detail-label">本月收入</div>
@@ -23,7 +25,7 @@
         </div>
         <div class="balance-column">
           <div class="detail-label">月结余</div>
-          <div class="detail-amount" :class="{ 'negative': summary.balance < 0 }">
+          <div class="detail-amount" :class="{ negative: summary.balance < 0 }">
             {{ summary.balance.toFixed(2) }}
           </div>
         </div>
@@ -36,30 +38,37 @@
       <div v-if="isLoading" class="loading-state">
         <span>加载中...</span>
       </div>
-      
+
       <!-- 错误提示 -->
       <div v-else-if="error" class="error-state">
         <p>{{ error }}</p>
         <button @click="fetchMonthlyData" class="retry-btn">重试</button>
       </div>
-      
+
       <!-- 正常数据显示 -->
       <template v-else>
         <div v-for="group in entries" :key="group.date" class="day-group-card">
           <!-- 日期头部 -->
           <div class="day-header">
             <div class="day-info">
-              <span class="date">{{ formatDateHeader(group.date, group.isToday, group.weekday) }}</span>
+              <span class="date">{{
+                formatDateHeader(group.date, group.isToday, group.weekday)
+              }}</span>
             </div>
             <div class="day-summary">
-              <span class="income" v-if="group.income > 0">收入: ¥{{ group.income.toFixed(2) }}</span>
-              <span class="expense" v-if="group.expense > 0">支出: ¥{{ group.expense.toFixed(2) }}</span>
+              <span class="income" v-if="group.income > 0"
+                >收入: ¥{{ group.income.toFixed(2) }}</span
+              >
+              <span class="expense" v-if="group.expense > 0"
+                >支出: ¥{{ group.expense.toFixed(2) }}</span
+              >
             </div>
-          </div>          <!-- 该日期的明细条目 -->
+          </div>
+          <!-- 该日期的明细条目 -->
           <div class="entry-list">
-            <div 
-              v-for="entry in group.entries" 
-              :key="entry.id" 
+            <div
+              v-for="entry in group.entries"
+              :key="entry.id"
               class="entry-item"
             >
               <div class="entry-icon" :class="getCategoryClass(entry.category)">
@@ -67,16 +76,25 @@
               </div>
               <div class="entry-info">
                 <div class="entry-category">{{ entry.category }}</div>
-                <div class="entry-description">{{ entry.specific_name || '无描述' }}</div>
-                <div class="entry-time">{{ formatEntryTime(entry.datetime) }}</div>
+                <div class="entry-description">
+                  {{ entry.specific_name || "无描述" }}
+                </div>
+                <div class="entry-time">
+                  {{ formatEntryTime(entry.datetime) }}
+                </div>
               </div>
-              <div class="entry-amount" :class="{ 'income': entry.type === 'income' }">
-                {{ entry.type === 'income' ? '+' : '-' }}¥{{ Math.abs(parseFloat(entry.amount)).toFixed(2) }}
+              <div
+                class="entry-amount"
+                :class="{ income: entry.type === 'income' }"
+              >
+                {{ entry.type === "income" ? "+" : "-" }}¥{{
+                  Math.abs(parseFloat(entry.amount)).toFixed(2)
+                }}
               </div>
             </div>
           </div>
         </div>
-        
+
         <!-- 没有数据时的占位符 -->
         <div v-if="entries.length === 0" class="no-data">
           <p>本月暂无交易记录</p>
@@ -88,144 +106,144 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import ApiService from '../services/ApiService'
+import { ref, computed, onMounted, watch } from "vue";
+import ApiService from "../services/ApiService";
 
 // 状态变量
-const currentYear = ref(new Date().getFullYear())
-const currentMonth = ref(new Date().getMonth() + 1)
+const currentYear = ref(new Date().getFullYear());
+const currentMonth = ref(new Date().getMonth() + 1);
 const summary = ref({
   expense: 0,
   income: 0,
-  balance: 0
-})
-const entries = ref([])
-const isLoading = ref(false)
-const error = ref(null)
+  balance: 0,
+});
+const entries = ref([]);
+const isLoading = ref(false);
+const error = ref(null);
 
 // 周几的中文表示
-const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+const weekdayNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 
 // 监听年月变化，重新获取数据
 watch([currentYear, currentMonth], () => {
-  fetchMonthlyData()
-})
+  fetchMonthlyData();
+});
 
 // 组件挂载时获取数据
 onMounted(() => {
-  fetchMonthlyData()
-})
+  fetchMonthlyData();
+});
 
 // 切换月份
 const changeMonth = (step) => {
-  let newMonth = currentMonth.value + step
-  let newYear = currentYear.value
+  let newMonth = currentMonth.value + step;
+  let newYear = currentYear.value;
 
   if (newMonth > 12) {
-    newMonth = 1
-    newYear += 1
+    newMonth = 1;
+    newYear += 1;
   } else if (newMonth < 1) {
-    newMonth = 12
-    newYear -= 1
+    newMonth = 12;
+    newYear -= 1;
   }
 
-  currentMonth.value = newMonth
-  currentYear.value = newYear
-}
+  currentMonth.value = newMonth;
+  currentYear.value = newYear;
+};
 
 // 获取月度数据
 const fetchMonthlyData = async () => {
-  isLoading.value = true
-  error.value = null
-  
+  isLoading.value = true;
+  error.value = null;
+
   try {
     console.log(`正在获取 ${currentYear.value}年${currentMonth.value}月的数据`);
-    
+
     // 创建月份的开始日期和结束日期
     const startDateObj = new Date(currentYear.value, currentMonth.value - 1, 1);
     const endDateObj = new Date(currentYear.value, currentMonth.value, 0); // 月末
-    
+
     // 使用本地日期格式，避免时区问题
-    const startDate = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, '0')}-${String(startDateObj.getDate()).padStart(2, '0')}`;
-    const endDate = `${endDateObj.getFullYear()}-${String(endDateObj.getMonth() + 1).padStart(2, '0')}-${String(endDateObj.getDate()).padStart(2, '0')}`;
-    
+    const startDate = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, "0")}-${String(startDateObj.getDate()).padStart(2, "0")}`;
+    const endDate = `${endDateObj.getFullYear()}-${String(endDateObj.getMonth() + 1).padStart(2, "0")}-${String(endDateObj.getDate()).padStart(2, "0")}`;
+
     console.log(`查询日期范围: ${startDate} 至 ${endDate}`);
-    
+
     // 查询交易列表
     const transactions = await ApiService.getFilteredTransactionList({
       startDateStr: startDate,
-      endDateStr: endDate
-    })
-    
+      endDateStr: endDate,
+    });
+
     // 查询汇总数据
     const summaryData = await ApiService.getSummaryStatistics({
       startDateStr: startDate,
-      endDateStr: endDate
-    })
-    
+      endDateStr: endDate,
+    });
+
     // 更新汇总信息
     summary.value = {
       expense: summaryData.total_expense || 0,
       income: summaryData.total_income || 0,
-      balance: (summaryData.total_income || 0) - (summaryData.total_expense || 0)
-    }
-    
+      balance:
+        (summaryData.total_income || 0) - (summaryData.total_expense || 0),
+    };
+
     // 按日期分组交易
-    const groupedEntries = groupEntriesByDate(transactions)
-    entries.value = groupedEntries
-    
+    const groupedEntries = groupEntriesByDate(transactions);
+    entries.value = groupedEntries;
   } catch (err) {
-    console.error('获取数据失败:', err)
-    error.value = '加载数据失败，请稍后重试'
+    console.error("获取数据失败:", err);
+    error.value = "加载数据失败，请稍后重试";
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
-}
+};
 
 // 按日期分组交易
 const groupEntriesByDate = (transactions) => {
-  const groups = {}
+  const groups = {};
   // 使用本地日期格式，避免时区问题
-  const todayDate = new Date()
-  const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`
-  
+  const todayDate = new Date();
+  const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, "0")}-${String(todayDate.getDate()).padStart(2, "0")}`;
+
   // 按日期分组
   for (const transaction of transactions) {
     // 提取日期部分
-    const dateTime = transaction.datetime || '';
+    const dateTime = transaction.datetime || "";
     // 处理datetime可能的不同格式 (ISO格式或文本格式)
-    const date = dateTime.includes('T') 
-      ? dateTime.split('T')[0]  // 处理ISO格式 (YYYY-MM-DDThh:mm:ss)
-      : dateTime.split(' ')[0]; // 处理文本格式 (YYYY-MM-DD hh:mm:ss)
-    
+    const date = dateTime.includes("T")
+      ? dateTime.split("T")[0] // 处理ISO格式 (YYYY-MM-DDThh:mm:ss)
+      : dateTime.split(" ")[0]; // 处理文本格式 (YYYY-MM-DD hh:mm:ss)
+
     if (!groups[date]) {
       // 计算星期几
-      const dateParts = date.split('-').map(p => parseInt(p))
-      const jsDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2])
-      const weekday = weekdayNames[jsDate.getDay()]
-      
+      const dateParts = date.split("-").map((p) => parseInt(p));
+      const jsDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+      const weekday = weekdayNames[jsDate.getDay()];
+
       groups[date] = {
         date,
         weekday,
         isToday: date === today,
         income: 0,
         expense: 0,
-        entries: []
-      }
+        entries: [],
+      };
     }
-    
+
     // 添加交易到对应日期组
-    groups[date].entries.push(transaction)
-    
+    groups[date].entries.push(transaction);
+
     // 累计收入或支出
-    const amount = parseFloat(transaction.amount)
-    if (transaction.type === 'income') {
-      groups[date].income += amount
+    const amount = parseFloat(transaction.amount);
+    if (transaction.type === "income") {
+      groups[date].income += amount;
     } else {
-      groups[date].expense += Math.abs(amount)
+      groups[date].expense += Math.abs(amount);
     }
   }
-  
+
   // 对每个日期组内的交易按 datetime 排序（从新到旧）
   for (const date in groups) {
     // 使用完整的 datetime 进行排序（反序：最新的在前面）
@@ -233,23 +251,23 @@ const groupEntriesByDate = (transactions) => {
       try {
         const dateTimeA = new Date(a.datetime);
         const dateTimeB = new Date(b.datetime);
-        
+
         // 检查日期是否有效
         if (!isNaN(dateTimeA) && !isNaN(dateTimeB)) {
           // 注意这里是降序排列（最新的在前）
           const timeResult = dateTimeB - dateTimeA;
           if (timeResult !== 0) return timeResult;
         }
-        
+
         // 如果时间相同或无效，回退到ID排序
-        return b.id - a.id;  // 也使用降序排列
+        return b.id - a.id; // 也使用降序排列
       } catch (e) {
         // 出错时回退到ID排序（降序）
         return b.id - a.id;
       }
     });
   }
-  
+
   // 转换为数组并按日期排序（从新到旧）
   return Object.values(groups).sort((a, b) => {
     try {
@@ -259,72 +277,72 @@ const groupEntriesByDate = (transactions) => {
       return 0;
     }
   });
-}
+};
 
 // 格式化日期头部显示
 const formatDateHeader = (date, isToday, weekday) => {
-  if (isToday) return `今天 (${weekday})`
-  
+  if (isToday) return `今天 (${weekday})`;
+
   // 提取月和日
-  const [year, month, day] = date.split('-')
-  return `${month}月${day}日 (${weekday})`
-}
+  const [year, month, day] = date.split("-");
+  return `${month}月${day}日 (${weekday})`;
+};
 
 // 格式化交易具体时间
 const formatEntryTime = (dateTime) => {
-  if (!dateTime) return '';
-  
+  if (!dateTime) return "";
+
   try {
     // 尝试将字符串解析为日期对象
     const date = new Date(dateTime);
-    
+
     // 检查日期是否有效
     if (!isNaN(date.getTime())) {
       // 以 HH:MM 格式返回时间
       return date.toTimeString().substring(0, 5);
     }
-    
+
     // 如果不能解析为日期对象，尝试从字符串中提取
-    const parts = dateTime.split(' ');
+    const parts = dateTime.split(" ");
     if (parts.length > 1 && parts[1]) {
       return parts[1].substring(0, 5); // 返回时:分
     }
-    
-    return '';
+
+    return "";
   } catch (e) {
-    console.error('格式化时间出错:', e);
-    return '';
+    console.error("格式化时间出错:", e);
+    return "";
   }
-}
+};
 
 // 获取类别图标
 const getCategoryIcon = (category) => {
   const icons = {
-    '餐饮': '🍽️',
-    '购物': '🛒',
-    '交通': '🚗',
-    '住房': '🏠',
-    '娱乐': '🎮',
-    '教育': '📚',
-    '医疗': '💊',
-    '日用品': '🧴',
-    '工资': '💰',
-    '奖金': '🏆',
-    '补贴': '💸',
-    '兼职': '💼',
-    '投资': '📈',
-    '其他收入': '💵',
-    '其他支出': '💸',
-    '其他': '📝'
-  }
-  
-  return icons[category] || '📝'
-}
+    餐饮: "🍽️",
+    购物: "🛒",
+    交通: "🚗",
+    住房: "🏠",
+    娱乐: "🎮",
+    教育: "📚",
+    医疗: "💊",
+    日用品: "🧴",
+    工资: "💰",
+    奖金: "🏆",
+    补贴: "💸",
+    兼职: "💼",
+    投资: "📈",
+    其他收入: "💵",
+    其他支出: "💸",
+    其他: "📝",
+  };
+
+  return icons[category] || "📝";
+};
 
 // 获取类别样式类名
 const getCategoryClass = (category) => {
-  return 'category-' + (category || '其他').toLowerCase().replace(/\s+/g, '-')
-}
+  return "category-" + (category || "其他").toLowerCase().replace(/\s+/g, "-");
+};
 </script>
 
 <style scoped>
@@ -343,7 +361,7 @@ const getCategoryClass = (category) => {
   justify-content: space-between;
   padding: 12px 16px;
   background-color: #fff;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .nav-button {
@@ -368,10 +386,10 @@ const getCategoryClass = (category) => {
 .summary-card {
   margin: 16px;
   padding: 16px;
-  background-color: #FFC107;
+  background-color: #ffc107;
   color: #fff;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .month-expense-label {
@@ -388,11 +406,12 @@ const getCategoryClass = (category) => {
 .summary-details {
   display: flex;
   margin-top: 16px;
-  border-top: 1px solid rgba(255,255,255,0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
   padding-top: 12px;
 }
 
-.income-column, .balance-column {
+.income-column,
+.balance-column {
   flex: 1;
 }
 
@@ -408,7 +427,7 @@ const getCategoryClass = (category) => {
 }
 
 .detail-amount.negative {
-  color: #FF5252;
+  color: #ff5252;
 }
 
 /* 明细列表 */
@@ -423,7 +442,7 @@ const getCategoryClass = (category) => {
   border-radius: 12px;
   margin-bottom: 16px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .day-header {
@@ -443,12 +462,12 @@ const getCategoryClass = (category) => {
 }
 
 .day-summary .income {
-  color: #4CAF50;
+  color: #4caf50;
   margin-right: 8px;
 }
 
 .day-summary .expense {
-  color: #F44336;
+  color: #f44336;
 }
 
 .entry-list {
@@ -501,15 +520,17 @@ const getCategoryClass = (category) => {
 
 .entry-amount {
   font-weight: bold;
-  color: #F44336;
+  color: #f44336;
 }
 
 .entry-amount.income {
-  color: #4CAF50;
+  color: #4caf50;
 }
 
 /* 加载和错误状态 */
-.loading-state, .error-state, .no-data {
+.loading-state,
+.error-state,
+.no-data {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -543,7 +564,7 @@ const getCategoryClass = (category) => {
 
 /* 同一轮对话的条目连接线 */
 .entry-item.same-conversation:not(:last-child)::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 20px;
   bottom: -1px;

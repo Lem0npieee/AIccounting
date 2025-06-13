@@ -14,7 +14,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 启动错误消息 -->
         <div class="message ai-message error-message" v-if="startupError">
           <div class="message-content">
@@ -22,29 +22,52 @@
             <p>请刷新页面或联系管理员。</p>
           </div>
         </div>
-        
-        <!-- 动态消息列表 -->        <div 
-          v-for="(message, index) in messages" 
-          :key="index" 
-          :class="['message', message.isUser ? 'user-message' : 'ai-message', message.type === 'ledger' ? 'ledger-message' : '']"
+
+        <!-- 动态消息列表 -->
+        <div
+          v-for="(message, index) in messages"
+          :key="index"
+          :class="[
+            'message',
+            message.isUser ? 'user-message' : 'ai-message',
+            message.type === 'ledger' ? 'ledger-message' : '',
+          ]"
         >
           <!-- 使用小分隔符标记新的对话交互 -->
-          <div v-if="index > 0 && messages[index-1].isUser && !message.isUser && message.type !== 'ledger'" class="conversation-divider">
+          <div
+            v-if="
+              index > 0 &&
+              messages[index - 1].isUser &&
+              !message.isUser &&
+              message.type !== 'ledger'
+            "
+            class="conversation-divider"
+          >
             <span class="divider-line"></span>
           </div>
-          
+
           <template v-if="message.type === 'ledger' && message.ledgerEntry">
             <div class="ledger-card">
               <div class="ledger-header">
                 <span class="ledger-icon">💴</span>
                 <span class="ledger-status">已记录：</span>
-                <span class="ledger-date">{{ formatLedgerDate(message.ledgerEntry.time) }}</span>
+                <span class="ledger-date">{{
+                  formatLedgerDate(message.ledgerEntry.time)
+                }}</span>
               </div>
               <div class="ledger-body">
-                <div class="ledger-category-icon">{{ getCategoryIcon(message.ledgerEntry.categoryTag || '其他') }}</div>
+                <div class="ledger-category-icon">
+                  {{
+                    getCategoryIcon(message.ledgerEntry.categoryTag || "其他")
+                  }}
+                </div>
                 <div class="ledger-info">
-                  <div class="ledger-category">{{ message.ledgerEntry.categoryTag || '其他' }}</div>
-                  <div class="ledger-desc">{{ message.ledgerEntry.specificName || '未命名项目' }}</div>
+                  <div class="ledger-category">
+                    {{ message.ledgerEntry.categoryTag || "其他" }}
+                  </div>
+                  <div class="ledger-desc">
+                    {{ message.ledgerEntry.specificName || "未命名项目" }}
+                  </div>
                 </div>
                 <div class="ledger-amount">
                   <span>¥{{ formatAmount(message.ledgerEntry.amount) }}</span>
@@ -58,7 +81,7 @@
             </div>
           </template>
         </div>
-        
+
         <!-- 输入中的指示 -->
         <div class="message ai-message" v-if="isAiTyping">
           <div class="message-content">
@@ -70,28 +93,36 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 输入区域 -->
       <div class="input-container">
-        <button 
-          class="clear-button" 
-          @click="clearHistory" 
+        <button
+          class="clear-button"
+          @click="clearHistory"
           title="清除历史记录"
-          :disabled="isAiTyping || aiStarting || !aiStarted || messages.length === 0"
+          :disabled="
+            isAiTyping || aiStarting || !aiStarted || messages.length === 0
+          "
         >
           🗑️
         </button>
-        <textarea 
+        <textarea
           ref="inputBox"
-          v-model="userInput" 
-          placeholder="输入收支情况，如：中午吃饭花了25元" 
+          v-model="userInput"
+          placeholder="输入收支情况，如：中午吃饭花了25元"
           @keydown.enter.prevent="sendMessage"
           :disabled="isAiTyping || aiStarting || !aiStarted || startupError"
         ></textarea>
-        <button 
-          class="send-button" 
-          @click="sendMessage" 
-          :disabled="!userInput.trim() || isAiTyping || aiStarting || !aiStarted || startupError"
+        <button
+          class="send-button"
+          @click="sendMessage"
+          :disabled="
+            !userInput.trim() ||
+            isAiTyping ||
+            aiStarting ||
+            !aiStarted ||
+            startupError
+          "
         >
           发送
         </button>
@@ -101,260 +132,271 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue'
-import ApiService from '../services/ApiService'
+import { ref, onMounted, nextTick, watch } from "vue";
+import ApiService from "../services/ApiService";
 
 // 状态变量
-const userInput = ref('')
-const messages = ref([])
-const isAiTyping = ref(false)
-const aiStarted = ref(false)
-const aiStarting = ref(false)
-const startupError = ref(null)
-const messagesContainer = ref(null)
-const inputBox = ref(null)
+const userInput = ref("");
+const messages = ref([]);
+const isAiTyping = ref(false);
+const aiStarted = ref(false);
+const aiStarting = ref(false);
+const startupError = ref(null);
+const messagesContainer = ref(null);
+const inputBox = ref(null);
 
 // 监听消息列表，保存到localStorage
-watch(messages, (newVal) => {
-  localStorage.setItem('ai_accounting_messages', JSON.stringify(newVal))
-}, { deep: true })
+watch(
+  messages,
+  (newVal) => {
+    localStorage.setItem("ai_accounting_messages", JSON.stringify(newVal));
+  },
+  { deep: true },
+);
 
 // 组件挂载时
 onMounted(() => {
   // 加载历史消息
   try {
-    const savedMessages = localStorage.getItem('ai_accounting_messages')
+    const savedMessages = localStorage.getItem("ai_accounting_messages");
     if (savedMessages) {
-      messages.value = JSON.parse(savedMessages)
+      messages.value = JSON.parse(savedMessages);
     } else {
       // 如果没有历史消息，则显示欢迎消息
       messages.value = [
         {
           content: `<b>🤖 欢迎使用AI记账助手！</b><br>👉 您可以直接输入收支情况，例如：'今天午饭花了35元'<br>👉 或者查询报表，例如：'帮我分析本月的消费情况'<br>👉 也可以与我闲聊，我会以助手的身份回答您的问题~<br>`,
           isUser: false,
-          timestamp: new Date().toISOString()
-        }
-      ]
+          timestamp: new Date().toISOString(),
+        },
+      ];
     }
   } catch (e) {
-    console.error('加载历史消息失败', e)
+    console.error("加载历史消息失败", e);
     // 出错时也显示欢迎消息
     messages.value = [
       {
         content: `<b>🤖 欢迎使用AI记账助手！</b><br>👉 您可以直接输入收支情况，例如：'今天午饭花了35元'<br>👉 或者查询报表，例如：'帮我分析本月的消费情况'<br>👉 也可以与我闲聊，我会以助手的身份回答您的问题~<br>`,
         isUser: false,
-        timestamp: new Date().toISOString()
-      }
-    ]
+        timestamp: new Date().toISOString(),
+      },
+    ];
   }
 
   // 确保等DOM更新后再滚动到底部
   nextTick(() => {
     // 添加短暂延时，确保渲染完成
     setTimeout(() => {
-      scrollToBottom()
-    }, 300)
-  })
-  
+      scrollToBottom();
+    }, 300);
+  });
+
   // 自动启动AI助手
-  startAiAssistant()
-  
+  startAiAssistant();
+
   // 设置焦点到输入框
   if (inputBox.value) {
-    inputBox.value.focus()
+    inputBox.value.focus();
   }
-})
+});
 
 // 启动AI助手
 const startAiAssistant = async () => {
-  aiStarting.value = true
-  startupError.value = null
-  
+  aiStarting.value = true;
+  startupError.value = null;
+
   try {
     // 初始化数据库和AI
-    const response = await ApiService.startAI()
+    const response = await ApiService.startAI();
     if (response.success) {
-      aiStarted.value = true
-      console.log('AI启动成功:', response.message)
+      aiStarted.value = true;
+      console.log("AI启动成功:", response.message);
     } else {
-      console.log('AI启动中:', response.message)
-      setTimeout(() => checkAiStatus(), 2000)
+      console.log("AI启动中:", response.message);
+      setTimeout(() => checkAiStatus(), 2000);
     }
   } catch (error) {
-    startupError.value = error.message || '无法连接到服务器'
-    console.error('AI启动失败:', error)
+    startupError.value = error.message || "无法连接到服务器";
+    console.error("AI启动失败:", error);
   } finally {
-    aiStarting.value = false
+    aiStarting.value = false;
   }
-}
-  
+};
+
 // 检查AI助手启动状态
 const checkAiStatus = async () => {
   try {
-    const response = await ApiService.startAI()
+    const response = await ApiService.startAI();
     if (response.success) {
-      aiStarted.value = true
-      console.log('AI启动成功:', response.message)
+      aiStarted.value = true;
+      console.log("AI启动成功:", response.message);
     } else {
-      startupError.value = '无法启动AI记账助手'
+      startupError.value = "无法启动AI记账助手";
     }
   } catch (error) {
-    startupError.value = error.message || '无法连接到服务器'
-    console.error('AI状态检查失败:', error)
+    startupError.value = error.message || "无法连接到服务器";
+    console.error("AI状态检查失败:", error);
   } finally {
-    aiStarting.value = false
+    aiStarting.value = false;
   }
-}
+};
 
 // 发送消息
 const sendMessage = async () => {
-  const message = userInput.value.trim()
-  if (!message) return
-  
+  const message = userInput.value.trim();
+  if (!message) return;
+
   // 检查AI助手是否已启动
   if (!aiStarted.value) {
-    startAiAssistant()
-    return
+    startAiAssistant();
+    return;
   }
-  
+
   // 添加用户消息到界面
   messages.value.push({
     content: message,
     isUser: true,
-    timestamp: new Date().toISOString()
-  })
-  
+    timestamp: new Date().toISOString(),
+  });
+
   // 清空输入框
-  userInput.value = ''
-  
+  userInput.value = "";
+
   // 滚动到底部
-  await nextTick()
-  scrollToBottom()
-  
+  await nextTick();
+  scrollToBottom();
+
   // 设置AI正在输入状态
-  isAiTyping.value = true
-  
+  isAiTyping.value = true;
+
   // 调用AI服务
   try {
-    const response = await ApiService.handleChatMessage(message)
-    isAiTyping.value = false
-    
+    const response = await ApiService.handleChatMessage(message);
+    isAiTyping.value = false;
+
     // 处理返回的数据
-    if (typeof response === 'string') {
+    if (typeof response === "string") {
       // 普通文本回复
       messages.value.push({
         content: response,
         isUser: false,
-        timestamp: new Date().toISOString()
-      })    } else if (response && response.replyText) {
+        timestamp: new Date().toISOString(),
+      });
+    } else if (response && response.replyText) {
       // 添加AI的文字回复消息
       messages.value.push({
         content: response.replyText,
         isUser: false,
-        timestamp: new Date().toISOString()
-      });
-      
-      // 如果有记账条目
-      if (response.ledgerEntry) {
-        // 确保ledgerEntry始终是数组
-        const entries = Array.isArray(response.ledgerEntry) ? response.ledgerEntry : [response.ledgerEntry];
-        
+        timestamp: new Date().toISOString(),
+      });      // 如果有记账条目
+      if (response.ledgerEntries || response.ledgerEntry) {
+        // 优先使用ledgerEntries，如果没有则尝试使用ledgerEntry
+        // 并确保处理的始终是数组形式
+        const entries = response.ledgerEntries 
+          ? response.ledgerEntries 
+          : (Array.isArray(response.ledgerEntry) 
+              ? response.ledgerEntry 
+              : [response.ledgerEntry]);
+
         // 简单地追加记账卡片到消息列表末尾
         for (const entry of entries) {
           messages.value.push({
-            type: 'ledger',
+            type: "ledger",
             ledgerEntry: entry,
             isUser: false,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
         }
       }
-      
+
       // 滚动到底部，确保看到新添加的记录
       setTimeout(scrollToBottom, 100);
     }
-    
+
     // 滚动到底部
-    await nextTick()
-    scrollToBottom()
+    await nextTick();
+    scrollToBottom();
   } catch (error) {
-    console.error('调用AI服务失败:', error)
-    isAiTyping.value = false
+    console.error("调用AI服务失败:", error);
+    isAiTyping.value = false;
     messages.value.push({
-      content: '抱歉，处理您的请求时出现了问题，请稍后再试。',
+      content: "抱歉，处理您的请求时出现了问题，请稍后再试。",
       isUser: false,
-      timestamp: new Date().toISOString()
-    })
-    
+      timestamp: new Date().toISOString(),
+    });
+
     // 滚动到底部
-    await nextTick()
-    scrollToBottom()
+    await nextTick();
+    scrollToBottom();
   }
-}
+};
 
 // 格式化账单金额
 const formatAmount = (amount) => {
-  const num = parseFloat(amount)
-  return Math.abs(num).toFixed(2)
-}
+  const num = parseFloat(amount);
+  return Math.abs(num).toFixed(2);
+};
 
 // 格式化账单日期
 const formatLedgerDate = (dateString) => {
-  if (!dateString) return ''
-  
-  const date = new Date(dateString)
-  if (isNaN(date.getTime())) return dateString
-  
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
-}
+  if (!dateString) return "";
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+};
 
 // 获取类别图标
 const getCategoryIcon = (category) => {
   const icons = {
-    '餐饮': '🍽️',
-    '购物': '🛒',
-    '交通': '🚗',
-    '住房': '🏠',
-    '娱乐': '🎮',
-    '教育': '📚',
-    '医疗': '💊',
-    '日用品': '🧴',
-    '工资': '💰',
-    '奖金': '🏆',
-    '补贴': '💸',
-    '兼职': '💼',
-    '投资': '📈',
-    '其他收入': '💵',
-    '其他支出': '💸',
-    '其他': '📝'
-  }
-  
-  return icons[category] || '📝'
-}
+    餐饮: "🍽️",
+    购物: "🛒",
+    交通: "🚗",
+    住房: "🏠",
+    娱乐: "🎮",
+    教育: "📚",
+    医疗: "💊",
+    日用品: "🧴",
+    工资: "💰",
+    奖金: "🏆",
+    补贴: "💸",
+    兼职: "💼",
+    投资: "📈",
+    其他收入: "💵",
+    其他支出: "💸",
+    其他: "📝",
+  };
+
+  return icons[category] || "📝";
+};
 
 // 滚动到底部
 const scrollToBottom = () => {
   if (messagesContainer.value) {
     // 使用requestAnimationFrame确保在下一帧渲染后滚动
     requestAnimationFrame(() => {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-    })
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    });
   }
-}
+};
 
 // 清除历史记录
 const clearHistory = () => {
-  if (confirm('确定要清除所有聊天记录吗？')) {
+  if (confirm("确定要清除所有聊天记录吗？")) {
     messages.value = [
       {
         content: `<b>🤖 欢迎使用AI记账助手！</b><br>👉 您可以直接输入收支情况，例如：'今天午饭花了35元'<br>👉 或者查询报表，例如：'帮我分析本月的消费情况'<br>👉 也可以与我闲聊，我会以助手的身份回答您的问题~<br>`,
         isUser: false,
-        timestamp: new Date().toISOString()
-      }
-    ]
-    localStorage.setItem('ai_accounting_messages', JSON.stringify(messages.value))
+        timestamp: new Date().toISOString(),
+      },
+    ];
+    localStorage.setItem(
+      "ai_accounting_messages",
+      JSON.stringify(messages.value),
+    );
   }
-}
+};
 </script>
 
 <style scoped>
@@ -512,7 +554,9 @@ textarea {
 }
 
 @keyframes bounce {
-  0%, 60%, 100% {
+  0%,
+  60%,
+  100% {
     transform: translateY(0);
   }
   30% {
@@ -547,7 +591,8 @@ textarea {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(0.8);
     opacity: 0.6;
   }
@@ -574,7 +619,7 @@ textarea {
 .ledger-card {
   background-color: #fff;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   border: 1px solid #e0e0e0;
   position: relative;
@@ -585,7 +630,7 @@ textarea {
 
 .ledger-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 .ledger-header {
@@ -654,6 +699,11 @@ textarea {
 .divider-line {
   height: 1px;
   width: 70%;
-  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1), transparent);
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(0, 0, 0, 0.1),
+    transparent
+  );
 }
 </style>
