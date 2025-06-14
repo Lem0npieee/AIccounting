@@ -1,6 +1,5 @@
 """
-主程序入口文件
-负责启动应用程序、连接AI助手和数据库
+主程序入口模块：启动应用程序，连接AI助手和数据库服务
 """
 
 from chat import AIAccountant
@@ -8,7 +7,7 @@ from sql import MySQLDataStore
 import sys
 
 def main():
-    """主函数，程序入口点"""
+    """主函数：程序执行入口，初始化组件并启动交互循环"""
     print("🤖 正在初始化AI记账助手...")
     
     # 初始化数据库连接

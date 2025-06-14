@@ -1,3 +1,6 @@
+"""
+AI聊天模块：处理用户消息，集成大语言模型，提供记账和分析功能
+"""
 import requests
 import json
 import numpy as np
@@ -9,8 +12,8 @@ import re
 import datetime
 import os
 
-# 设置DeepSeek API
-DEEPSEEK_API_KEY = "sk-3b7ab35452b34c22b825f7d617501fd8"  # 替换为你的API密钥
+# DeepSeek API配置
+DEEPSEEK_API_KEY = "sk-3b7ab35452b34c22b825f7d617501fd8"
 API_URL = "https://api.deepseek.com/v1/chat/completions"
 headers = {
     "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
@@ -18,7 +21,16 @@ headers = {
 }
 
 def query_deepseek(prompt, language="zh", temperature=0):
-    """向DeepSeek API发送查询"""
+    """调用DeepSeek API发送查询
+    
+    Args:
+        prompt: 提示词文本
+        language: 语言，默认中文
+        temperature: 温度参数，控制生成多样性
+    
+    Returns:
+        API返回的文本内容或None
+    """
     data = {
         "model": "deepseek-chat",
         "messages": [{"role": "user", "content": prompt}],
@@ -32,9 +44,15 @@ def query_deepseek(prompt, language="zh", temperature=0):
         print(f"Error: {response.status_code}")
         return None
 
-# AI记账助手
 class AIAccountant:
+    """AI记账助手类：处理用户消息，提取记账信息，生成回复"""
+    
     def __init__(self, data_store):
+        """初始化AI记账助手
+        
+        Args:
+            data_store: 数据存储实例
+        """
         self.data_store = data_store
         # 预设账目类别
         self.default_categories = {
@@ -42,10 +60,13 @@ class AIAccountant:
             "支出": ["餐饮", "购物", "交通", "住房", "娱乐", "教育", "医疗", "日用品", "其他支出"]
         }
     def _extract_accounting_info(self, user_message):
-        """
-        从用户消息中提取记账信息
-        使用AI模型解析用户输入，提取记账所需的关键信息
-        支持一次性提取多个记账条目
+        """从用户消息中提取记账信息
+        
+        Args:
+            user_message: 用户输入的消息文本
+            
+        Returns:
+            解析出的记账信息列表或None
         """
         # 构建提示词，指导AI模型提取所需信息
         prompt = f"""
@@ -313,7 +334,14 @@ class AIAccountant:
         response = re.sub(r'\(注：.*?\)', '', response)
         return response
     def process_user_message(self, user_message):
-        """处理用户消息并返回回复"""
+        """处理用户消息并返回回复
+        
+        Args:
+            user_message: 用户输入的消息文本
+            
+        Returns:
+            回复文本或包含回复和记账数据的字典
+        """
         # 检查敏感内容
         has_sensitive, sensitive_info = self._check_sensitive_content(user_message)
         if has_sensitive:

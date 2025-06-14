@@ -1,62 +1,49 @@
 /**
- * SQLite数据存储类
- * 负责与SQLite数据库的交互，为移动端提供本地数据存储
+ * SQLite数据存储模块
+ * 
+ * 负责移动设备上的SQLite数据库操作，依赖Cordova SQLite插件
+ * 提供记账数据的本地存储和查询功能，专为移动应用设计
+ * 
  * @module SQLiteDataStore
  */
 
 /**
- * 数据库配置常量
- * @constant
- * @type {Object}
- */
-const DB_CONFIG = {
-  /** 数据库名称 */
-  DB_NAME: "aiccounting.db",
-  /** 数据库位置 */
-  DB_LOCATION: "default",
-  /** 表名 */
-  ENTRIES_TABLE: "entries"
-};
-
-/**
  * SQLite数据存储类
- * @class
+ * 提供对Cordova SQLite插件的封装
  */
 class SQLiteDataStore {
   /**
    * 创建SQLite数据存储实例
-   * @constructor
+   * 初始化数据库连接变量
    */
   constructor() {
     this.db = null;
     this.isInitialized = false;
   }
-
   /**
-   * 打开数据库连接
-   * @async
-   * @returns {Promise<boolean>} 连接是否成功
-   * @throws {Error} 当SQLite插件不可用或连接失败时抛出错误
+   * 打开SQLite数据库连接
+   * 使用Cordova SQLite插件连接本地数据库
+   * 
+   * @returns {Promise<boolean>} 连接成功返回true，失败返回false并抛出异常
    */
   async openDatabase() {
     return new Promise((resolve, reject) => {
       try {
         // 检查cordova-sqlite-storage插件是否可用
         if (!window.sqlitePlugin) {
-          const error = new Error("SQLite插件未加载");
-          console.error(error.message);
-          reject(error);
+          console.error('SQLite插件未加载');
+          reject(new Error('SQLite插件未加载'));
           return;
         }
 
         this.db = window.sqlitePlugin.openDatabase({
-          name: DB_CONFIG.DB_NAME,
-          location: DB_CONFIG.DB_LOCATION
+          name: 'aiccounting.db',
+          location: 'default'
         });
 
         resolve(true);
       } catch (error) {
-        console.error("数据库连接错误:", error);
+        console.error('数据库连接错误:', error);
         reject(error);
       }
     });
@@ -64,9 +51,7 @@ class SQLiteDataStore {
 
   /**
    * 初始化数据库，创建必要的表
-   * @async
    * @returns {Promise<boolean>} 初始化是否成功
-   * @throws {Error} 初始化失败时抛出错误
    */
   async initializeDb() {
     if (this.isInitialized) return true;
@@ -74,438 +59,377 @@ class SQLiteDataStore {
     try {
       await this.openDatabase();
 
-      // 创建entries表
-      await this._executeQuery(`
-        CREATE TABLE IF NOT EXISTS ${DB_CONFIG.ENTRIES_TABLE} (
-          id TEXT PRIMARY KEY,
-          amount REAL NOT NULL,
-          category TEXT,
-          specific_name TEXT,
-          datetime TEXT NOT NULL,
-          type TEXT NOT NULL CHECK(type IN ('income', 'expense')),
-          notes TEXT
-        )
-      `);
-
-      // 创建索引以提高查询性能
-      await this._executeQuery(`
-        CREATE INDEX IF NOT EXISTS idx_entries_datetime 
-        ON ${DB_CONFIG.ENTRIES_TABLE} (datetime)
-      `);
-
-      await this._executeQuery(`
-        CREATE INDEX IF NOT EXISTS idx_entries_type 
-        ON ${DB_CONFIG.ENTRIES_TABLE} (type)
-      `);
-
-      await this._executeQuery(`
-        CREATE INDEX IF NOT EXISTS idx_entries_category 
-        ON ${DB_CONFIG.ENTRIES_TABLE} (category)
-      `);
-
-      console.log("数据库初始化成功");
-      this.isInitialized = true;
-      return true;
-    } catch (error) {
-      console.error("数据库初始化错误:", error);
-      this.isInitialized = false;
-      throw new Error(`数据库初始化失败: ${error.message}`);
-    }
-  }
-
-  /**
-   * 确保数据库已初始化
-   * @private
-   * @async
-   * @throws {Error} 数据库未初始化时抛出错误
-   */
-  async _ensureInitialized() {
-    if (!this.isInitialized || !this.db) {
-      await this.initializeDb();
-    }
-  }
-
-  /**
-   * 生成唯一ID
-   * @private
-   * @returns {string} 生成的唯一ID
-   */
-  _generateId() {
-    return Date.now().toString() + Math.random().toString(36).substring(2, 9);
-  }
-
-  /**
-   * 执行SQL查询
-   * @private
-   * @async
-   * @param {string} sql - SQL查询语句
-   * @param {Array} [params=[]] - 查询参数
-   * @returns {Promise<Object>} 查询结果
-   */
-  async _executeQuery(sql, params = []) {
-    return new Promise((resolve, reject) => {
-      this.db.transaction(tx => {
-        tx.executeSql(
-          sql, 
-          params,
-          (tx, results) => {
-            resolve(results);
+      return new Promise((resolve, reject) => {
+        this.db.transaction(
+          tx => {
+            // 创建记账条目表
+            tx.executeSql(`
+              CREATE TABLE IF NOT EXISTS entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                amount DECIMAL(10, 2) NOT NULL,
+                category VARCHAR(50) NOT NULL,
+                specific_name VARCHAR(100),
+                datetime TEXT NOT NULL,
+                entry_type TEXT NOT NULL CHECK(entry_type IN ('income', 'expense')),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+              )
+            `);
           },
-          (tx, error) => {
-            console.error("SQL执行错误:", error);
+          error => {
+            console.error('初始化数据库错误:', error);
             reject(error);
-            return false;
+          },
+          () => {
+            this.isInitialized = true;
+            resolve(true);
           }
         );
       });
-    });
+    } catch (error) {
+      console.error('初始化数据库连接错误:', error);
+      return false;
+    }
   }
 
   /**
-   * 添加新交易记录
-   * @async
-   * @param {Object} entry - 交易记录对象
-   * @returns {Promise<string|null>} 成功时返回新记录ID，失败时返回null
+   * 添加记账条目
+   * @param {Object} entry 记账条目
+   * @returns {Promise<number|null>} 新添加条目的ID或null
    */
   async addEntry(entry) {
     try {
-      await this._ensureInitialized();
-      
-      // 复制并处理输入对象
-      const newEntry = { ...entry };
-      
-      // 添加唯一ID
-      const entryId = this._generateId();
-      
-      // 确保有日期时间
-      if (!newEntry.datetime) {
-        const now = new Date();
-        newEntry.datetime = now.toISOString().replace('T', ' ').substring(0, 19);
+      if (!this.isInitialized) {
+        await this.initializeDb();
       }
 
-      // 执行插入操作
-      await this._executeQuery(
-        `INSERT INTO ${DB_CONFIG.ENTRIES_TABLE} 
-        (id, amount, category, specific_name, datetime, type, notes) 
-        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          entryId,
-          newEntry.amount,
-          newEntry.category || null,
-          newEntry.specific_name || null,
-          newEntry.datetime,
-          newEntry.type,
-          newEntry.notes || null
-        ]
-      );
-      
-      return entryId;
+      return new Promise((resolve, reject) => {
+        this.db.transaction(
+          tx => {
+            const sql = `
+              INSERT INTO entries (amount, category, specific_name, datetime, entry_type)
+              VALUES (?, ?, ?, ?, ?)
+            `;
+            tx.executeSql(
+              sql,
+              [
+                entry.amount,
+                entry.category,
+                entry.specific_name || '',
+                entry.datetime,
+                entry.type
+              ],
+              (tx, results) => {
+                resolve(results.insertId);
+              }
+            );
+          },
+          error => {
+            console.error('添加记账条目错误:', error);
+            reject(error);
+          }
+        );
+      });
     } catch (error) {
-      console.error("添加记录失败:", error);
+      console.error('添加记账条目连接错误:', error);
       return null;
     }
   }
 
   /**
-   * 构建筛选条件SQL
-   * @private
-   * @param {string} [startDatetime=null] - 起始日期时间筛选
-   * @param {string} [endDatetime=null] - 结束日期时间筛选
-   * @param {Array<string>} [categories=null] - 类别筛选
-   * @param {boolean} [includeIncome=true] - 是否包含收入
-   * @param {boolean} [includeExpense=true] - 是否包含支出
-   * @returns {Object} 包含SQL条件语句和参数的对象
+   * 更新记账条目
+   * @param {number} entryId 条目ID
+   * @param {Object} updatedEntry 更新的条目数据
+   * @returns {Promise<boolean>} 更新是否成功
    */
-  _buildFilterConditions(
-    startDatetime = null,
-    endDatetime = null,
-    categories = null,
-    includeIncome = true,
-    includeExpense = true
-  ) {
-    const conditions = [];
-    const params = [];
-    
-    // 日期筛选
-    if (startDatetime) {
-      conditions.push("datetime >= ?");
-      params.push(startDatetime);
+  async updateEntry(entryId, updatedEntry) {
+    try {
+      if (!this.isInitialized) {
+        await this.initializeDb();
+      }
+
+      return new Promise((resolve, reject) => {
+        this.db.transaction(
+          tx => {
+            const sql = `
+              UPDATE entries SET
+              amount = ?,
+              category = ?,
+              specific_name = ?,
+              datetime = ?,
+              entry_type = ?
+              WHERE id = ?
+            `;
+            tx.executeSql(
+              sql,
+              [
+                updatedEntry.amount,
+                updatedEntry.category,
+                updatedEntry.specific_name || '',
+                updatedEntry.datetime,
+                updatedEntry.type,
+                entryId
+              ],
+              (tx, results) => {
+                resolve(results.rowsAffected > 0);
+              }
+            );
+          },
+          error => {
+            console.error('更新记账条目错误:', error);
+            reject(error);
+          }
+        );
+      });
+    } catch (error) {
+      console.error('更新记账条目连接错误:', error);
+      return false;
     }
-    
-    if (endDatetime) {
-      conditions.push("datetime <= ?");
-      params.push(endDatetime);
-    }
-    
-    // 类别筛选
-    if (categories && categories.length > 0) {
-      const placeholders = categories.map(() => "?").join(", ");
-      conditions.push(`category IN (${placeholders})`);
-      params.push(...categories);
-    }
-    
-    // 收入/支出类型筛选
-    const typeConditions = [];
-    if (includeIncome) {
-      typeConditions.push("type = 'income'");
-    }
-    if (includeExpense) {
-      typeConditions.push("type = 'expense'");
-    }
-    
-    if (typeConditions.length > 0) {
-      conditions.push(`(${typeConditions.join(" OR ")})`);
-    }
-    
-    // 构建WHERE子句
-    let whereClause = "";
-    if (conditions.length > 0) {
-      whereClause = "WHERE " + conditions.join(" AND ");
-    }
-    
-    return { whereClause, params };
   }
 
   /**
-   * 获取交易记录
-   * @async
-   * @param {string} [startDatetime=null] - 起始日期时间筛选
-   * @param {string} [endDatetime=null] - 结束日期时间筛选
-   * @param {Array<string>} [categories=null] - 类别筛选
-   * @param {boolean} [includeIncome=true] - 是否包含收入
-   * @param {boolean} [includeExpense=true] - 是否包含支出
-   * @returns {Promise<Array>} 交易记录数组
+   * 删除记账条目
+   * @param {number} entryId 条目ID
+   * @returns {Promise<boolean>} 删除是否成功
+   */
+  async deleteEntry(entryId) {
+    try {
+      if (!this.isInitialized) {
+        await this.initializeDb();
+      }
+
+      return new Promise((resolve, reject) => {
+        this.db.transaction(
+          tx => {
+            const sql = 'DELETE FROM entries WHERE id = ?';
+            tx.executeSql(
+              sql,
+              [entryId],
+              (tx, results) => {
+                resolve(results.rowsAffected > 0);
+              }
+            );
+          },
+          error => {
+            console.error('删除记账条目错误:', error);
+            reject(error);
+          }
+        );
+      });
+    } catch (error) {
+      console.error('删除记账条目连接错误:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 获取记账条目
+   * @param {string} startDate 开始日期
+   * @param {string} endDate 结束日期
+   * @param {Array} categories 类别
+   * @param {boolean} includeIncome 是否包含收入
+   * @param {boolean} includeExpense 是否包含支出
+   * @returns {Promise<Array>} 记账条目列表
    */
   async getEntries(
-    startDatetime = null,
-    endDatetime = null,
+    startDate = null,
+    endDate = null,
     categories = null,
     includeIncome = true,
     includeExpense = true
   ) {
     try {
-      await this._ensureInitialized();
-      
-      const { whereClause, params } = this._buildFilterConditions(
-        startDatetime,
-        endDatetime,
-        categories,
-        includeIncome,
-        includeExpense
-      );
-      
-      // 执行查询
-      const results = await this._executeQuery(
-        `SELECT * FROM ${DB_CONFIG.ENTRIES_TABLE} ${whereClause} ORDER BY datetime DESC`,
-        params
-      );
-      
-      // 转换结果到对象数组
-      const entries = [];
-      for (let i = 0; i < results.rows.length; i++) {
-        entries.push(results.rows.item(i));
+      if (!this.isInitialized) {
+        await this.initializeDb();
       }
-      
-      return entries;
+
+      let conditions = [];
+      let params = [];
+
+      // 构建SQL查询条件
+      if (startDate) {
+        conditions.push('datetime >= ?');
+        params.push(startDate);
+      }
+      if (endDate) {
+        conditions.push('datetime <= ?');
+        params.push(endDate);
+      }
+      if (categories && categories.length > 0) {
+        // SQLite参数占位符只能是?，不能像MySQL那样使用?命名参数
+        const placeholders = categories.map(() => '?').join(', ');
+        conditions.push(`category IN (${placeholders})`);
+        params = [...params, ...categories];
+      }
+
+      // 收入/支出筛选
+      const typeConditions = [];
+      if (includeIncome) {
+        typeConditions.push("entry_type = 'income'");
+      }
+      if (includeExpense) {
+        typeConditions.push("entry_type = 'expense'");
+      }
+
+      if (typeConditions.length > 0) {
+        conditions.push(`(${typeConditions.join(' OR ')})`);
+      }
+
+      // 构建完整SQL
+      let sql = 'SELECT id, amount, category, specific_name, datetime, entry_type FROM entries';
+      if (conditions.length > 0) {
+        sql += ' WHERE ' + conditions.join(' AND ');
+      }
+      sql += ' ORDER BY datetime DESC';
+
+      return new Promise((resolve, reject) => {
+        this.db.transaction(
+          tx => {
+            tx.executeSql(
+              sql,
+              params,
+              (tx, results) => {
+                const entries = [];
+                for (let i = 0; i < results.rows.length; i++) {
+                  const row = results.rows.item(i);
+                  entries.push({
+                    id: row.id,
+                    amount: parseFloat(row.amount),
+                    category: row.category,
+                    specific_name: row.specific_name,
+                    datetime: row.datetime,
+                    type: row.entry_type
+                  });
+                }
+                resolve(entries);
+              }
+            );
+          },
+          error => {
+            console.error('获取记账条目错误:', error);
+            reject(error);
+          }
+        );
+      });
     } catch (error) {
-      console.error("获取记录失败:", error);
+      console.error('获取记账条目连接错误:', error);
       return [];
     }
   }
 
   /**
-   * 更新交易记录
-   * @async
-   * @param {string} entryId - 记录ID
-   * @param {Object} updatedData - 更新的数据
-   * @returns {Promise<boolean>} 更新是否成功
+   * 获取指定日期的收支统计
+   * @param {string} date 日期
+   * @returns {Promise<Object>} 收支统计
    */
-  async updateEntry(entryId, updatedData) {
+  async getDailyStats(date) {
     try {
-      await this._ensureInitialized();
-      
-      // 构建更新语句
-      const updateFields = [];
-      const params = [];
-      
-      // 只更新提供的字段
-      const allowedFields = ["amount", "category", "specific_name", "datetime", "type", "notes"];
-      for (const field of allowedFields) {
-        if (field in updatedData) {
-          updateFields.push(`${field} = ?`);
-          params.push(updatedData[field]);
-        }
+      if (!this.isInitialized) {
+        await this.initializeDb();
       }
-      
-      if (updateFields.length === 0) {
-        return false;  // 没有可更新的字段
-      }
-      
-      // 添加ID到参数中
-      params.push(entryId);
-      
-      // 执行更新
-      const result = await this._executeQuery(
-        `UPDATE ${DB_CONFIG.ENTRIES_TABLE} SET ${updateFields.join(", ")} WHERE id = ?`,
-        params
-      );
-      
-      return result.rowsAffected > 0;
+
+      // 构造日期范围查询条件
+      const startDate = `${date} 00:00:00`;
+      const endDate = `${date} 23:59:59`;
+
+      return new Promise((resolve, reject) => {
+        this.db.transaction(
+          tx => {
+            // 查询收入总和
+            tx.executeSql(
+              "SELECT COALESCE(SUM(amount), 0) as total FROM entries WHERE datetime BETWEEN ? AND ? AND entry_type = 'income'",
+              [startDate, endDate],
+              (tx, incomeResults) => {
+                const income = incomeResults.rows.item(0).total || 0;
+
+                // 查询支出总和
+                tx.executeSql(
+                  "SELECT COALESCE(SUM(ABS(amount)), 0) as total FROM entries WHERE datetime BETWEEN ? AND ? AND entry_type = 'expense'",
+                  [startDate, endDate],
+                  (tx, expenseResults) => {
+                    const expense = expenseResults.rows.item(0).total || 0;
+                    
+                    resolve({
+                      income: parseFloat(income),
+                      expense: parseFloat(expense),
+                      net: parseFloat(income) - parseFloat(expense)
+                    });
+                  }
+                );
+              }
+            );
+          },
+          error => {
+            console.error('获取日统计错误:', error);
+            reject(error);
+          }
+        );
+      });
     } catch (error) {
-      console.error("更新记录失败:", error);
-      return false;
+      console.error('获取日统计连接错误:', error);
+      return { income: 0, expense: 0, net: 0 };
     }
   }
 
   /**
-   * 删除交易记录
-   * @async
-   * @param {string} entryId - 记录ID
-   * @returns {Promise<boolean>} 删除是否成功
+   * 获取按类别分组的支出统计
+   * @param {string} startDate 开始日期
+   * @param {string} endDate 结束日期
+   * @returns {Promise<Array>} 类别统计
    */
-  async deleteEntry(entryId) {
+  async getCategoryStats(startDate = null, endDate = null) {
     try {
-      await this._ensureInitialized();
-      
-      // 执行删除操作
-      const result = await this._executeQuery(
-        `DELETE FROM ${DB_CONFIG.ENTRIES_TABLE} WHERE id = ?`,
-        [entryId]
-      );
-      
-      return result.rowsAffected > 0;
-    } catch (error) {
-      console.error("删除记录失败:", error);
-      return false;
-    }
-  }
+      if (!this.isInitialized) {
+        await this.initializeDb();
+      }
 
-  /**
-   * 清空所有记录
-   * @async
-   * @returns {Promise<boolean>} 清空是否成功
-   */
-  async clearAllEntries() {
-    try {
-      await this._ensureInitialized();
-      
-      // 执行清空操作
-      await this._executeQuery(`DELETE FROM ${DB_CONFIG.ENTRIES_TABLE}`);
-      
-      console.log("所有记录已清空");
-      return true;
-    } catch (error) {
-      console.error("清空记录失败:", error);
-      return false;
-    }
-  }
+      let conditions = [];
+      let params = [];
 
-  /**
-   * 获取某个时间段内的收入支出汇总
-   * @async
-   * @param {string} [startDatetime=null] - 起始日期时间筛选
-   * @param {string} [endDatetime=null] - 结束日期时间筛选 
-   * @returns {Promise<Object>} 汇总数据对象
-   */
-  async getSummary(startDatetime = null, endDatetime = null) {
-    try {
-      await this._ensureInitialized();
-      
-      const conditions = [];
-      const params = [];
-      
-      if (startDatetime) {
-        conditions.push("datetime >= ?");
-        params.push(startDatetime);
+      if (startDate) {
+        conditions.push('datetime >= ?');
+        params.push(startDate);
       }
-      
-      if (endDatetime) {
-        conditions.push("datetime <= ?");
-        params.push(endDatetime);
+      if (endDate) {
+        conditions.push('datetime <= ?');
+        params.push(endDate);
       }
-      
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-      
-      // 执行汇总查询
-      const results = await this._executeQuery(
-        `SELECT 
-          SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income,
-          SUM(CASE WHEN type = 'expense' THEN ABS(amount) ELSE 0 END) as total_expense,
-          COUNT(*) as count
-        FROM ${DB_CONFIG.ENTRIES_TABLE} ${whereClause}`,
-        params
-      );
-      
-      const summary = results.rows.item(0);
-      const totalIncome = summary.total_income || 0;
-      const totalExpense = summary.total_expense || 0;
-      
-      return {
-        total_income: totalIncome,
-        total_expense: totalExpense,
-        net_income: totalIncome - totalExpense,
-        count: summary.count
-      };
-    } catch (error) {
-      console.error("获取汇总数据失败:", error);
-      return {
-        total_income: 0,
-        total_expense: 0,
-        net_income: 0,
-        count: 0
-      };
-    }
-  }
 
-  /**
-   * 获取按类别统计的数据
-   * @async
-   * @param {string} type - 记录类型 ('income'或'expense')
-   * @param {string} [startDatetime=null] - 起始日期时间筛选
-   * @param {string} [endDatetime=null] - 结束日期时间筛选
-   * @returns {Promise<Array>} 类别统计数据数组
-   */
-  async getCategoryStats(type, startDatetime = null, endDatetime = null) {
-    try {
-      await this._ensureInitialized();
-      
-      const conditions = [`type = ?`];
-      const params = [type];
-      
-      if (startDatetime) {
-        conditions.push("datetime >= ?");
-        params.push(startDatetime);
+      // 按支出类别分组统计
+      let sql = "SELECT category, SUM(ABS(amount)) as total FROM entries WHERE entry_type = 'expense'";
+
+      if (conditions.length > 0) {
+        sql += ' AND ' + conditions.join(' AND ');
       }
-      
-      if (endDatetime) {
-        conditions.push("datetime <= ?");
-        params.push(endDatetime);
-      }
-      
-      const whereClause = `WHERE ${conditions.join(" AND ")}`;
-      
-      // 执行按类别统计
-      const results = await this._executeQuery(
-        `SELECT 
-          category, 
-          SUM(ABS(amount)) as total_amount,
-          COUNT(*) as count
-        FROM ${DB_CONFIG.ENTRIES_TABLE}
-        ${whereClause}
-        GROUP BY category
-        ORDER BY total_amount DESC`,
-        params
-      );
-      
-      // 转换结果到对象数组
-      const stats = [];
-      for (let i = 0; i < results.rows.length; i++) {
-        stats.push(results.rows.item(i));
-      }
-      
-      return stats;
+
+      sql += ' GROUP BY category ORDER BY total DESC';
+
+      return new Promise((resolve, reject) => {
+        this.db.transaction(
+          tx => {
+            tx.executeSql(
+              sql,
+              params,
+              (tx, results) => {
+                const stats = [];
+                for (let i = 0; i < results.rows.length; i++) {
+                  const row = results.rows.item(i);
+                  stats.push({
+                    category: row.category,
+                    amount: parseFloat(row.total)
+                  });
+                }
+                resolve(stats);
+              }
+            );
+          },
+          error => {
+            console.error('获取类别统计错误:', error);
+            reject(error);
+          }
+        );
+      });
     } catch (error) {
-      console.error("获取类别统计失败:", error);
+      console.error('获取类别统计连接错误:', error);
       return [];
     }
   }

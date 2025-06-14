@@ -1,13 +1,24 @@
+"""
+数据存储模块：提供MySQL数据库操作，处理记账数据的存储、查询和统计
+"""
 import pymysql as MySQLdb
 import datetime
 import json
 
 
 class MySQLDataStore:
-    """数据库操作类，负责与MySQL数据库的交互"""
-
+    """MySQL数据库操作类：处理数据的存储和查询"""
+    
     def __init__(self, host="localhost", port=3306, user="root", password="512560", db="data"):
-        """初始化数据库连接"""
+        """初始化数据库连接配置
+        
+        Args:
+            host: 数据库主机地址
+            port: 数据库端口
+            user: 用户名
+            password: 密码
+            db: 数据库名
+        """
         self.db_config = {
             'host': host,
             'port': port,
@@ -18,9 +29,13 @@ class MySQLDataStore:
         }
         self.connection = None
         self.initialize_db()
-
+        
     def connect(self):
-        """连接到数据库"""
+        """连接到数据库
+        
+        Returns:
+            bool: 连接成功返回True，失败返回False
+        """
         try:
             self.connection = MySQLdb.connect(**self.db_config)
             return True
@@ -32,9 +47,12 @@ class MySQLDataStore:
         """关闭数据库连接"""
         if self.connection:
             self.connection.close()
-
     def initialize_db(self):
-        """初始化数据库，创建必要的表"""
+        """初始化数据库，创建必要的表结构
+        
+        Returns:
+            bool: 初始化成功返回True，失败返回False
+        """
         if not self.connect():
             return False
 
@@ -58,10 +76,16 @@ class MySQLDataStore:
             print(f"初始化数据库错误: {e}")
             return False
         finally:
-            self.close()
-
+            self.close()    
     def add_entry(self, entry):
-        """添加记账条目"""
+        """添加新的记账条目
+        
+        Args:
+            entry: 包含记账信息的字典
+            
+        Returns:
+            int: 成功返回条目ID，失败返回None
+        """
         if not self.connect():
             return None
 
@@ -140,10 +164,20 @@ class MySQLDataStore:
             print(f"删除记账条目错误: {e}")
             return False
         finally:
-            self.close()
-
+            self.close()    
     def get_entries(self, start_date=None, end_date=None, categories=None, include_income=True, include_expense=True):
-        """获取记账条目"""
+        """获取符合条件的记账条目列表
+        
+        Args:
+            start_date: 开始日期
+            end_date: 结束日期
+            categories: 类别过滤列表
+            include_income: 是否包含收入条目
+            include_expense: 是否包含支出条目
+            
+        Returns:
+            list: 记账条目列表
+        """
         if not self.connect():
             return []
 
