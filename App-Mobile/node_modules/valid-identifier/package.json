@@ -1,0 +1,25 @@
+{
+  "name": "valid-identifier",
+  "version": "0.0.2",
+  "description": "Validates namespaces and java package names against identifier rules",
+  "main": "valid-identifier.js",
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/purplecabbage/valid-identifier"
+  },
+  "keywords": [
+    "validate",
+    "identifier",
+    "java",
+    "c#"
+  ],
+  "scripts": {
+    "test": "npm run jasmine",
+    "jasmine": "jasmine-node --captureExceptions --color tests/valid-identifier-spec.js"
+  },
+  "devDependencies": {
+    "jasmine-node": "1.14.5"
+  },
+  "author": "Jesse MacFadyen",
+  "license": "Apache-2.0"
+}

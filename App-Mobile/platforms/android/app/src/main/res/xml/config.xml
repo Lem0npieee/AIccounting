@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.aiccounting.mobile" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <feature name="SQLitePlugin">
+        <param name="android-package" value="io.sqlc.SQLitePlugin" />
+    </feature>
+    <name>AIccounting</name>
+    <description>AI记账移动应用</description>
+    <author email="dev@example.com" href="https://example.com">
+        AIccounting Team
+    </author>
+    <content src="index.html" />
+    <access origin="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <allow-navigation href="*" />
+    <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application" xmlns:android="http://schemas.android.com/apk/res/android">
+        <application android:usesCleartextTraffic="true" />
+    </edit-config>
+    <config-file parent="/manifest" target="AndroidManifest.xml" xmlns:android="http://schemas.android.com/apk/res/android">
+        <uses-permission android:name="android.permission.INTERNET" />
+        <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    </config-file>
+    <preference name="loglevel" value="DEBUG" />
+    <preference name="AndroidPersistentFileLocation" value="Internal" />
+</widget>
