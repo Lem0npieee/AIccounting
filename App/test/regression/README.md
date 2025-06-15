@@ -9,8 +9,9 @@
 当前回归测试包含以下核心功能模块：
 
 ### 1. Record.spec.js - AI记账页面测试
+
 - ✅ 基础渲染测试 (7个测试用例)
-- ✅ 数据绑定测试 (3个测试用例)  
+- ✅ 数据绑定测试 (3个测试用例)
 - ✅ 用户交互测试 (3个测试用例)
 - ✅ AI对话功能测试 (3个测试用例)
 - ✅ 界面状态测试 (3个测试用例)
@@ -18,11 +19,13 @@
 - ✅ 响应式设计测试 (2个测试用例)
 
 ### 2. Details.spec.js - 明细页面测试
+
 - ✅ 组件渲染和数据显示
 - ✅ 筛选和搜索功能
 - ✅ 数据操作功能
 
 ### 3. Chart.spec.js - 图表分析页面测试
+
 - ✅ 图表组件渲染
 - ✅ 数据可视化功能
 - ✅ 交互功能测试
@@ -30,16 +33,19 @@
 ## 运行方式
 
 ### 方法1: 使用npm脚本 (推荐)
+
 ```bash
-npm run test:regression
+cd "c:\Users\26791\Documents\AIccounting-main\AIccounting-main\App" ; npm run test:regressionnpm run test:regression
 ```
 
 ### 方法2: 直接运行脚本
+
 ```bash
 node test/regression/run-regression.js
 ```
 
 ### 方法3: 使用Jest命令
+
 ```bash
 npx jest --config test/regression/jest.conf.js
 ```
@@ -54,18 +60,21 @@ npx jest --config test/regression/jest.conf.js
 ## 维护指南
 
 ### 何时运行回归测试
+
 - 发布新版本前
 - 重构核心功能后
 - 修复重要bug后
 - 定期CI/CD流程中
 
 ### 如何添加新的回归测试
+
 1. 确保新功能测试完全稳定
 2. 在unit测试中验证通过率100%
 3. 复制到regression/specs文件夹
 4. 更新本README文档
 
 ### 如果回归测试失败
+
 1. 检查最近的代码更改
 2. 确认是否为预期的行为变化
 3. 如果是预期变化，更新对应的测试
@@ -74,21 +83,25 @@ npx jest --config test/regression/jest.conf.js
 ## 测试覆盖的核心功能
 
 ### 用户界面稳定性
+
 - 组件正确渲染
 - 样式和布局完整性
 - 响应式设计兼容性
 
 ### 数据处理准确性
+
 - 数据绑定正确性
 - 用户输入处理
 - 状态管理稳定性
 
 ### 用户交互可靠性
+
 - 按钮点击响应
 - 表单提交功能
 - 键盘交互支持
 
 ### AI功能稳定性
+
 - AI对话流程
 - 记账数据处理
 - 错误处理机制
