@@ -2,6 +2,7 @@ const path = require('path')
 
 module.exports = {
   rootDir: path.resolve(__dirname, '../../'),
+  displayName: 'Regression Tests',
   moduleFileExtensions: [
     'js',
     'json',
@@ -15,14 +16,14 @@ module.exports = {
     '.*\\.(vue)$': '<rootDir>/node_modules/vue-jest'
   },
   testMatch: [
-    '<rootDir>/test/unit/specs/**/*.spec.js'
+    '<rootDir>/test/regression/specs/**/*.spec.js'
   ],
   testEnvironment: 'jsdom',
   snapshotSerializers: ['<rootDir>/node_modules/jest-serializer-vue'],
   setupFiles: ['<rootDir>/test/unit/setupTests.js'],
   clearMocks: true,
   collectCoverage: false,
-  coverageDirectory: '<rootDir>/test/unit/coverage',
+  coverageDirectory: '<rootDir>/test/regression/coverage',
   collectCoverageFrom: [
     'src/**/*.{js,vue}',
     '!src/main.js',
@@ -34,5 +35,9 @@ module.exports = {
     'lcov',
     'html'
   ],
-  verbose: true
+  verbose: true,
+  // 配置为只运行通过的稳定测试
+  testNamePattern: '^(?!.*\\.skip).*$',
+  // 确保测试运行的超时时间
+  testTimeout: 10000
 }

@@ -10,6 +10,6 @@ describe('HelloWorld.vue', () => {
       }
     }).$mount()
     expect(vm.$el.querySelector('.hello h1').textContent)
-      .toContain('Welcome to Your Vue.js App')
+      .toEqual('Welcome to Your Vue.js App')
   })
 })
