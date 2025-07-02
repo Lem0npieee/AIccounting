@@ -79,6 +79,9 @@ class AIAccountant:
         对于每笔交易，请提取以下信息:
         1. 金额 (amount): 数值，收入为正数，支出为负数，如无明确表示是收入还是支出，默认为支出(负数)
         2. 类别 (category): 对应的消费或收入类别
+           - 收入类别只能是: "工资", "奖金", "补贴", "兼职", "投资", "其他收入"
+           - 支出类别只能是: "餐饮", "购物", "交通", "住房", "娱乐", "教育", "医疗", "日用品", "其他支出"
+           - 如果无法确定类别归属，收入请使用"其他收入"，支出请使用"其他支出"
         3. 具体名称 (specific_name): 具体的消费项目或收入来源
         4. 日期时间 (datetime): 格式为 YYYY-MM-DD HH:MM:SS，如未指定则使用当前时间
         5. 消费/收入类型 (type): "income"(收入)或"expense"(支出)
@@ -205,6 +208,8 @@ class AIAccountant:
         # 移除可能出现的元注释
         response = re.sub(r'（注：.*?）', '', response)
         response = re.sub(r'\(注：.*?\)', '', response)
+        # 确保换行符被保留并正确处理
+        response = response.replace('\n', '<br>')
         return response    
     def _generate_report_response(self, report_type, time_period):
         """生成报表分析回复"""
@@ -332,6 +337,8 @@ class AIAccountant:
         # 移除可能出现的元注释
         response = re.sub(r'（注：.*?）', '', response)
         response = re.sub(r'\(注：.*?\)', '', response)
+        # 确保换行符被保留并正确处理
+        response = response.replace('\n', '<br>')
         return response
     def process_user_message(self, user_message):
         """处理用户消息并返回回复
@@ -443,8 +450,9 @@ class AIAccountant:
             # 移除可能出现的元注释
             response = re.sub(r'（注：.*?）', '', response)
             response = re.sub(r'\(注：.*?\)', '', response)
+            # 确保换行符被保留并正确处理
+            response = response.replace('\n', '<br>')
             return response
-
 
 
 

@@ -166,8 +166,9 @@
             <!-- 收入点 -->
             <circle v-for="(pt, idx) in getLineDots('income')" :key="'income'+idx" :cx="pt.x" :cy="pt.y" r="4" fill="#67C23A" />
             <!-- 支出点 -->
-            <circle v-for="(pt, idx) in getLineDots('expense')" :key="'expense'+idx" :cx="pt.x" :cy="pt.y" r="4" fill="#F56C6C" />            <!-- 日期标签 -->
-            <text v-for="(day, idx) in getTrendXAxisLabels()" :key="'date'+idx" :x="40 + idx * (360 / (getTrendXAxisLabels().length - 1 || 1))" y="215" text-anchor="middle" font-size="12" fill="#909399">{{ day }}</text>
+            <circle v-for="(pt, idx) in getLineDots('expense')" :key="'expense'+idx" :cx="pt.x" :cy="pt.y" r="4" fill="#F56C6C" />
+            <!-- 日期标签 -->
+            <text v-for="(day, idx) in getTrendLineXAxisLabels()" :key="'date'+idx" :x="40 + idx * (360 / (getTrendLineXAxisLabels().length - 1 || 1))" y="215" text-anchor="middle" font-size="12" fill="#909399">{{ day }}</text>
             <!-- 金额刻度 -->
             <text v-for="tick in 5" :key="'tick'+tick" x="30" :y="200 - (tick-1)*45" text-anchor="end" font-size="12" fill="#909399">{{ Math.round(getMaxTrendValue() * (tick-1)/4) }}</text>
           </svg>
@@ -184,35 +185,67 @@
           </div>
         </div>
       </div>      <!-- 前5笔最高支出交易 -->
-      <div class="top-transactions-section" v-if="topExpenseTransactions.length > 0">
+      <div 
+        class="top-transactions-section" 
+        v-if="topExpenseTransactions.length > 0"
+      >
         <h3 class="top-transactions-title expense">前5笔最高支出</h3>
         <div class="top-transactions-list">
-          <div v-for="(item, index) in topExpenseTransactions" :key="'expense-'+index" class="top-transaction-item">
+          <div
+            v-for="(item, index) in topExpenseTransactions"
+            :key="'expense-' + index"
+            class="top-transaction-item"
+          >
             <div class="transaction-info">
               <div class="transaction-name">{{ item.specific_name }}</div>
-              <div class="transaction-category">{{ item.categoryTag || item.category }}</div>
+              <div class="transaction-category">{{ item.category }}</div>
             </div>
             <div class="transaction-bar-container">
-              <div class="transaction-bar expense" :style="{ width: (item.amount / topExpenseTransactions[0].amount * 100) + '%' }"></div>
+              <div
+                class="transaction-bar expense"
+                :style="{
+                  width:
+                    (item.amount / topExpenseTransactions[0].amount) * 100 +
+                    '%',
+                }"
+              ></div>
             </div>
-            <div class="transaction-amount expense">-¥{{ item.amount.toFixed(2) }}</div>
+            <div class="transaction-amount expense">
+              -¥{{ item.amount.toFixed(2) }}
+            </div>
           </div>
         </div>
       </div>
 
-        <!-- 前5笔最高收入交易 -->
-      <div class="top-transactions-section" v-if="topIncomeTransactions.length > 0">
+      <!-- 前5笔最高收入交易 -->
+      <div
+        class="top-transactions-section"
+        v-if="topIncomeTransactions.length > 0"
+      >
         <h3 class="top-transactions-title income">前5笔最高收入</h3>
         <div class="top-transactions-list">
-          <div v-for="(item, index) in topIncomeTransactions" :key="'income-'+index" class="top-transaction-item">
+          <div
+            v-for="(item, index) in topIncomeTransactions"
+            :key="'income-' + index"
+            class="top-transaction-item"
+          >
             <div class="transaction-info">
               <div class="transaction-name">{{ item.specific_name }}</div>
-              <div class="transaction-category">{{ item.categoryTag || item.category }}</div>
+              <div class="transaction-category">{{ item.category }}</div>
             </div>
             <div class="transaction-bar-container">
-              <div class="transaction-bar income" :style="{ width: (item.amount / topIncomeTransactions[0].amount * 100) + '%' }"></div>
+              <div
+                class="transaction-bar income"
+                :style="{
+                  width:
+                    (item.amount / topIncomeTransactions[0].amount) * 100 +
+                    '%',
+                }"
+              ></div>
             </div>
-            <div class="transaction-amount income">+¥{{ item.amount.toFixed(2) }}</div>
+            <div class="transaction-amount income">
+              +¥{{ item.amount.toFixed(2) }}
+            </div>
           </div>
         </div>
       </div>
@@ -227,7 +260,8 @@ export default {
   name: 'Chart',
   data() {
     return {
-      showFilter: false,      timeTypes: [
+      showFilter: false,
+      timeTypes: [
         { label: '按周', value: 'week' },
         { label: '按月', value: 'month' },
         { label: '按年', value: 'year' }
@@ -236,22 +270,23 @@ export default {
       expenseCategories: ['餐饮','购物','交通','住房','娱乐','教育','医疗','日用品','其他支出'],
       incomeCategories: ['工资','奖金','补贴','兼职','投资','其他收入'],
       filterExpense: ['餐饮','购物','交通','住房','娱乐','教育','医疗','日用品','其他支出'],
-      filterIncome: ['工资','奖金','补贴','兼职','投资','其他收入'],      currentYear: new Date().getFullYear(),
+      filterIncome: ['工资','奖金','补贴','兼职','投资','其他收入'],
+      currentYear: new Date().getFullYear(),
       currentMonth: new Date().getMonth() + 1,
-      activeTab: 'trend', // 改为初始显示趋势页面以便测试
-      apiBaseUrl: 'http://localhost:5000',      // 后端数据
+      activeTab: 'expense',
+      apiBaseUrl: 'http://localhost:5000',
+      // 后端数据
       summary: { income: 0, expense: 0, balance: 0 },      incomeCategoryData: [],
       expenseCategoryData: [],
       trendData: [],           // 净收入数据（原有）
       incomeTrendData: [],     // 新增：纯收入数据
       expenseTrendData: [],    // 新增：纯支出数据
       ledgerEntries: [],
-      isLoading: false,
-      error: null,
-      
-      // 前5笔最高金额交易数据
+      // 新增：前5笔最高金额交易数据
       topExpenseTransactions: [],
-      topIncomeTransactions: []
+      topIncomeTransactions: [],
+      isLoading: false,
+      error: null
     }
   },
   computed: {
@@ -287,46 +322,7 @@ export default {
     applyFilter() {
       this.showFilter = false;
       this.fetchChartData();
-    },    // 处理获取前5笔最高金额交易
-    async processTopTransactions(startDate, endDate) {
-      try {
-        console.log('processTopTransactions - 开始获取前5笔交易', startDate, endDate);
-        // 直接使用已有的交易数据
-        const transactions = this.ledgerEntries;
-        console.log('使用现有ledgerEntries数据:', transactions.length);
-          // 处理收入交易
-        const incomeTransactions = transactions
-          .filter(t => t.amount > 0)  // 正数为收入
-          .map(t => ({
-            ...t,
-            amount: Math.abs(parseFloat(t.amount || 0)),
-            specific_name: t.specificName || t.categoryTag
-          }))
-          .sort((a, b) => b.amount - a.amount)
-          .slice(0, 5);
-        
-        // 处理支出交易
-        const expenseTransactions = transactions
-          .filter(t => t.amount < 0)  // 负数为支出
-          .map(t => ({
-            ...t,
-            amount: Math.abs(parseFloat(t.amount || 0)),
-            specific_name: t.specificName || t.categoryTag
-          }))
-          .sort((a, b) => b.amount - a.amount)
-          .slice(0, 5);
-        
-        // 更新状态
-        this.topIncomeTransactions = incomeTransactions;
-        this.topExpenseTransactions = expenseTransactions;
-        
-        console.log('processTopTransactions - topIncomeTransactions:', this.topIncomeTransactions);
-        console.log('processTopTransactions - topExpenseTransactions:', this.topExpenseTransactions);
-      } catch (error) {
-        console.error('获取前5笔交易失败:', error);
-      }
     },
-    
     // 获取后端图表数据
     async fetchChartData() {
       this.isLoading = true;
@@ -334,14 +330,14 @@ export default {
       try {
         // 构建日期范围
         let startDate, endDate;
-        const now = new Date();        if (this.filterTimeType === 'week') {
-          // 过去7天（包括今天）
-          const endDate_obj = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          const startDate_obj = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          startDate_obj.setDate(startDate_obj.getDate() - 6); // 向前推6天，加上今天共7天
-          
-          startDate = startDate_obj.toISOString().substr(0, 10);
-          endDate = endDate_obj.toISOString().substr(0, 10);
+        const now = new Date();
+        if (this.filterTimeType === 'week') {
+          // 本周
+          const day = now.getDay() || 7;
+          const monday = new Date(now);
+          monday.setDate(now.getDate() - day + 1);
+          startDate = monday.toISOString().substr(0, 10);
+          endDate = new Date(monday.getTime() + 6 * 24 * 3600 * 1000).toISOString().substr(0, 10);
         } else if (this.filterTimeType === 'month') {
           // 本月
           startDate = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-01`;
@@ -365,10 +361,16 @@ export default {
         console.log('发送请求的参数:', {
           url: `${this.apiBaseUrl}/get_chart_data_from_filters`,
           params: requestParams
-        });        // 使用requestParams发送请求
-        console.log('发送请求参数:', requestParams);
-        
+        });
+
         const response = await axios.post(`${this.apiBaseUrl}/get_chart_data_from_filters`, requestParams);
+        
+        console.log('后端返回的完整数据:', response.data);
+        console.log('后端返回的趋势数据:', {
+          trendData: response.data.daily_net_income_series,
+          incomeTrendData: response.data.daily_income_series,
+          expenseTrendData: response.data.daily_expense_series
+        });
 
         if (response.data.error) throw new Error(response.data.error);
         
@@ -377,24 +379,21 @@ export default {
           income: response.data.summary_statistics.total_income,
           expense: response.data.summary_statistics.total_expense,
           balance: response.data.summary_statistics.net_income
+        };
 
-        };        this.incomeCategoryData = response.data.income_category_distribution;
-        this.expenseCategoryData = response.data.expense_category_distribution;        this.trendData = response.data.daily_net_income_series;
+        this.incomeCategoryData = response.data.income_category_distribution;
+        this.expenseCategoryData = response.data.expense_category_distribution;
+        this.trendData = response.data.daily_net_income_series;
         this.incomeTrendData = response.data.daily_income_series || [];
-        this.expenseTrendData = response.data.daily_expense_series || [];        // 数据更新后的状态
+        this.expenseTrendData = response.data.daily_expense_series || [];
+
+        // 数据更新后的状态
         console.log('数据更新后的状态:', {
           summary: this.summary,
           trendData: this.trendData,
           incomeTrendData: this.incomeTrendData,
           expenseTrendData: this.expenseTrendData
         });
-        
-        // 调试年视图数据
-        if (this.filterTimeType === 'year') {
-          console.log('年视图调试 - 月份标签:', this.getTrendXAxisLabels());
-          console.log('年视图调试 - 收入数据:', this.getTrendSeriesData('income'));
-          console.log('年视图调试 - 支出数据:', this.getTrendSeriesData('expense'));
-        }
 
         // 合并所有明细
         this.ledgerEntries = [
@@ -402,8 +401,9 @@ export default {
           ...response.data.filtered_expense_transactions.map(e => ({ ...e, amount: -Math.abs(e.amount), categoryTag: e.category, specificName: e.specific_name, time: e.datetime }))
         ];
         
-        // 获取前5笔最高金额交易
-        await this.processTopTransactions(startDate, endDate);
+        // 处理top5交易数据
+        this.processTopTransactions(response.data.filtered_income_transactions, response.data.filtered_expense_transactions);
+        
       } catch (error) {
         this.error = '获取图表数据失败';
         console.error('图表数据获取失败:', error);
@@ -582,64 +582,36 @@ export default {
       });
       return Math.max(max, 100); // 最小100，避免全为0
     },
-    // 获取趋势图X轴标签    
+    // 获取趋势图X轴标签
     getTrendXAxisLabels() {
       if (!this.trendData || !this.trendData.length) return [];
-        if (this.filterTimeType === 'week') {
-        // 如果有后端数据，尝试使用后端提供的标签
-        if (this.trendData && this.trendData.length) {
-          // 检查是否包含 day_of_week 字段
-          if (this.trendData[0].day_of_week) {
-            return this.trendData.map(item => item.day_of_week || '');
-          }
-        }
-        
-        // 如果后端数据不可用或格式不符，创建自定义标签
-        const now = new Date();
-        const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        startDate.setDate(startDate.getDate() - 6); // 向前推6天，加上今天共7天
-        
-        // 创建所有7天的标签
-        const labels = [];
-        const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-        
-        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-          const month = d.getMonth() + 1;
-          const day = d.getDate();
-          const weekday = weekdays[d.getDay()];
-          labels.push(`${month}/${day} ${weekday}`);
-        }
-        
-        return labels;} else if (this.filterTimeType === 'month') {
-        return this.trendData.map((item, idx) => (item.day || (idx + 1) + '日'));      } else if (this.filterTimeType === 'year') {
-        // 如果有后端数据，使用后端提供的月份标签
-        if (this.trendData && this.trendData.length) {
-          return this.trendData.map(item => {
-            // 处理中文月份到数字月份的转换
-            if (item.month_of_year) {
-              const chineseMonthMap = {
-                '一月': '1月', '二月': '2月', '三月': '3月', '四月': '4月',
-                '五月': '5月', '六月': '6月', '七月': '7月', '八月': '8月',
-                '九月': '9月', '十月': '10月', '十一月': '11月', '十二月': '12月'
-              };
-              return chineseMonthMap[item.month_of_year] || item.month_of_year;
-            }
-            return '';
-          });
-        } else {
-          // 后端数据不存在时，生成默认月份标签
-          const monthLabels = [];
-          for (let i = 1; i <= 12; i++) {
-            monthLabels.push(i + '月');
-          }
-          return monthLabels;
-        }
+      
+      if (this.filterTimeType === 'week') {
+        return this.trendData.map(item => item.day_of_week || '');
+      } else if (this.filterTimeType === 'month') {
+        return this.trendData.map((item, idx) => (item.day || (idx + 1) + '日'));
+      } else if (this.filterTimeType === 'year') {
+        return this.trendData.map(item => item.month_of_year || '');
+      }
+      return [];
+    },
+    // 获取折线图X轴标签（新增方法）
+    getTrendLineXAxisLabels() {
+      if (!this.trendData || !this.trendData.length) return [];
+      
+      if (this.filterTimeType === 'week') {
+        return this.trendData.map(item => item.day_of_week || '');
+      } else if (this.filterTimeType === 'month') {
+        return this.trendData.map((item, idx) => {
+          const day = parseInt((item.day || (idx + 1)).toString());
+          return [5, 10, 15, 20, 25, 30].includes(day) ? `${day}日` : '';
+        });
+      } else if (this.filterTimeType === 'year') {
+        return this.trendData.map(item => item.month_of_year || '');
       }
       return [];
     },
     // 获取趋势图的最大值，用于统一Y轴刻度
-
     getMaxTrendValue() {
       const netData = this.getTrendSeriesData('net');
       const incomeData = this.getTrendSeriesData('income');
@@ -648,7 +620,9 @@ export default {
       const allValues = [...netData, ...incomeData, ...expenseData];
       const max = Math.max(...allValues);
       return Math.max(max, 100); // 最小100，避免全为0
-    },    // 获取趋势数据
+    },
+    
+    // 获取趋势数据
     getTrendSeriesData(type = 'net') {
       let dataSource = [];
       if (type === 'income') {
@@ -659,140 +633,7 @@ export default {
         dataSource = this.trendData; // 默认净收入
       }
       console.log(`getTrendSeriesData(${type}) - dataSource:`, dataSource);
-      
       if (!dataSource || !dataSource.length) return [];
-        if (this.filterTimeType === 'year') {
-        // 年视图特殊处理，确保12个月数据完整
-        const values = Array(12).fill(0); // 初始化12个月份的数据为0
-        
-        // 将API返回的数据映射到对应的月份
-        dataSource.forEach(item => {
-          let monthIndex = -1;
-            if (item.month_of_year) {
-            // 处理中文月份格式（如"一月"、"二月"等）
-            const chineseMonthMap = {
-              '一月': 0, '二月': 1, '三月': 2, '四月': 3, 
-              '五月': 4, '六月': 5, '七月': 6, '八月': 7,
-              '九月': 8, '十月': 9, '十一月': 10, '十二月': 11
-            };
-            
-            if (chineseMonthMap[item.month_of_year] !== undefined) {
-              monthIndex = chineseMonthMap[item.month_of_year];
-            } else {
-              // 如果不是中文月份，尝试提取数字部分（兼容"1月"格式）
-              const monthNumStr = item.month_of_year.replace(/[^0-9]/g, '');
-              const monthNum = parseInt(monthNumStr);
-              if (!isNaN(monthNum)) {
-                monthIndex = monthNum - 1; // 月份从1开始，索引从0开始
-              }
-            }
-          } else if (item.month) {
-            // 如果直接提供月份数字
-            monthIndex = parseInt(item.month) - 1;
-          } else if (item.date) {
-            // 尝试从日期字符串提取月份
-            try {
-              const itemDate = new Date(item.date);
-              monthIndex = itemDate.getMonth(); // getMonth() 返回 0-11
-            } catch (e) {
-              console.error('日期解析错误:', e);
-            }
-          }
-          
-          // 安全检查确保索引在有效范围内
-          if (monthIndex >= 0 && monthIndex < 12) {
-            // 根据数据类型确定要使用的字段
-            if (type === 'income' && item.income !== undefined) {
-              values[monthIndex] = parseFloat(item.income || 0);
-            } else if (type === 'expense' && item.expense !== undefined) {
-              values[monthIndex] = parseFloat(Math.abs(item.expense || 0));
-            } else {
-              values[monthIndex] = parseFloat(item.value || 0);
-            }
-          }
-        });
-        
-        return values;      } else if (this.filterTimeType === 'week') {
-        // 检查后端数据格式，如果有day_of_week字段，直接使用后端数据
-        if (dataSource && dataSource.length && dataSource[0].day_of_week) {
-          const weekdayOrder = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']; // 后端的顺序
-          const values = new Array(7).fill(0);
-          
-          dataSource.forEach(item => {
-            const idx = weekdayOrder.indexOf(item.day_of_week);
-            if (idx !== -1) {
-              if (type === 'income' && item.income !== undefined) {
-                values[idx] = parseFloat(item.income || 0);
-              } else if (type === 'expense' && item.expense !== undefined) {
-                values[idx] = parseFloat(Math.abs(item.expense || 0));
-              } else {
-                values[idx] = parseFloat(item.value || 0);
-              }
-            }
-          });
-          
-          return values;
-        }
-        
-        // 如果后端数据不含day_of_week字段，则按日期处理
-        // 周视图特殊处理，确保7天数据完整
-        const now = new Date();
-        const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        startDate.setDate(startDate.getDate() - 6); // 向前推6天，加上今天共7天
-        
-        // 创建所有7天的日期字符串
-        const allDays = [];
-        const values = [];
-        
-        // 生成七天的日期字符串数组
-        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-          const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          allDays.push(dateStr);
-          values.push(0); // 默认值为0
-        }
-        
-        // 将API返回的数据映射到对应的日期
-        dataSource.forEach(item => {
-          if (item.date) {
-            // 标准化日期格式
-            let dateStr = item.date;
-            try {
-              if (typeof dateStr === 'string' && dateStr.includes('T')) {
-                dateStr = dateStr.split('T')[0];
-              }
-              const index = allDays.findIndex(day => day === dateStr);
-              if (index !== -1) {
-                values[index] = parseFloat(item.value || 0);
-              } else {
-                // 尝试通过日期对象进行匹配
-                const itemDate = new Date(dateStr);
-                const formattedDateStr = `${itemDate.getFullYear()}-${String(itemDate.getMonth() + 1).padStart(2, '0')}-${String(itemDate.getDate()).padStart(2, '0')}`;
-                const newIndex = allDays.findIndex(day => day === formattedDateStr);
-                if (newIndex !== -1) {
-                  values[newIndex] = parseFloat(item.value || 0);
-                }
-              }
-            } catch (e) {
-              console.error('日期格式化错误:', e);
-            }
-          } else if (item.day) {
-            // 处理按天返回的数据格式
-            const day = parseInt(item.day);
-            // 查找对应的日期
-            for (let i = 0; i < allDays.length; i++) {
-              const dayDate = new Date(allDays[i]);
-              if (dayDate.getDate() === day) {
-                values[i] = parseFloat(item.value || 0);
-                break;
-              }
-            }
-          }
-        });
-        
-        return values;
-      }
-      
       return dataSource.map(item => item.value || 0);
     },
     // 生成polyline的points字符串
@@ -827,7 +668,56 @@ export default {
       console.log(`getLineDots(${type}) - dots:`, dots);
       return dots;
     },
+    // 添加新方法获取数值
+    getDayAmountByTrendValue(idx) {
+      const val = this.trendData[idx] ? this.trendData[idx].value || 0 : 0;
+      return val;
+    },
+    
+    // 修改获取条形图宽度的方法
+    getBarWidthByTrend(idx) {
+      const val = this.trendData[idx] ? this.trendData[idx].value || 0 : 0;
+      const maxAbsValue = Math.max(
+        ...this.trendData.map(item => Math.abs(item.value || 0)),
+        100
+      );
+      const width = (Math.abs(val) / maxAbsValue) * 100;
+      return width;
+    },
+    
+    // 修改获取金额显示的方法
+    getDayAmountByTrend(idx) {
+      const val = this.trendData[idx] ? this.trendData[idx].value || 0 : 0;
+      return `¥${val.toFixed(1)}`;
+    },
+    // 处理前5笔最高金额交易
+    processTopTransactions(incomeTransactions, expenseTransactions) {
+      // 处理收入交易
+      const topIncome = incomeTransactions
+        .map(t => ({
+          ...t,
+          amount: Math.abs(parseFloat(t.amount || 0)),
+          specific_name: t.specific_name || t.category,
+          category: t.category
+        }))
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5);
 
+      // 处理支出交易
+      const topExpense = expenseTransactions
+        .map(t => ({
+          ...t,
+          amount: Math.abs(parseFloat(t.amount || 0)),
+          specific_name: t.specific_name || t.category,
+          category: t.category
+        }))
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5);
+
+      // 更新状态
+      this.topIncomeTransactions = topIncome;
+      this.topExpenseTransactions = topExpense;
+    },
   }
 }
 </script>
@@ -1096,53 +986,136 @@ export default {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* 前5笔交易样式 */
-.top-transactions-section {
-  margin-top: 30px;
-  border-top: 1px solid #ebeef5;
-  padding-top: 20px;
-  padding-bottom: 10px;
+.bar-chart {
+  padding: 0 20px;
 }
 
-.top-transactions-title {
+.chart-title {
   font-size: 16px;
-  font-weight: bold;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
+  font-weight: 500;
+  color: #606266;
+  margin-bottom: 15px;
+  text-align: center;
 }
 
-.top-transactions-title.expense::before {
-  content: "📉";
-  margin-right: 6px;
-}
-
-.top-transactions-title.income::before {
-  content: "📈";
-  margin-right: 6px;
-}
-
-.top-transactions-list {
+.chart-bars-horizontal {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
 }
 
-.top-transaction-item {
+.chart-bar-horizontal {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.day-label {
+  width: 40px;
+  font-size: 12px;
+  color: #909399;
+  text-align: right;
+  padding-top: 4px;
+}
+
+.bars-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bar-item {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.transaction-info {
-  width: 80px;
+.bar-label {
+  width: 40px;
+  font-size: 12px;
+  color: #606266;
+}
+
+.bar-container {
+  flex: 1;
+  height: 20px;
+  background-color: #f5f7fa;
+  border-radius: 10px;
   overflow: hidden;
-  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.expense-bar-horizontal, .income-bar-horizontal {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 10px 0 0 10px;
+  transition: width 0.3s ease;
+}
+
+.expense-bar-horizontal {
+  background-color: #F56C6C;
+}
+
+.income-bar-horizontal {
+  background-color: #67C23A;
+}
+
+.bar-value {
+  position: absolute;
+  right: 8px;
+  font-size: 12px;
+  color: #606266;
+  z-index: 1;
+}
+
+/* Top 5 transactions styles */
+.top-transactions-section {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.top-transactions-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.top-transactions-title.expense {
+  color: #F56C6C;
+}
+
+.top-transactions-title.income {
+  color: #67C23A;
+}
+
+.top-transactions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.top-transaction-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.transaction-info {
+  width: 120px;
+  overflow: hidden;
 }
 
 .transaction-name {
   font-size: 14px;
-  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1150,22 +1123,21 @@ export default {
 
 .transaction-category {
   font-size: 12px;
-  color: #606266;
+  color: #909399;
 }
 
 .transaction-bar-container {
   flex: 1;
-  height: 12px;
+  height: 20px;
   background-color: #f5f7fa;
-  border-radius: 6px;
+  border-radius: 10px;
   overflow: hidden;
-  position: relative;
 }
 
 .transaction-bar {
   height: 100%;
-  border-radius: 6px;
-  transition: width 0.5s ease-out;
+  border-radius: 10px 0 0 10px;
+  transition: width 0.3s ease;
 }
 
 .transaction-bar.expense {
@@ -1177,10 +1149,10 @@ export default {
 }
 
 .transaction-amount {
-  min-width: 90px;
-  text-align: right;
-  font-weight: bold;
+  width: 90px;
   font-size: 14px;
+  font-weight: 500;
+  text-align: right;
 }
 
 .transaction-amount.expense {
@@ -1190,7 +1162,6 @@ export default {
 .transaction-amount.income {
   color: #67C23A;
 }
-
 /* 筛选弹窗样式 */
 .filter-btn {
   position: absolute;
@@ -1325,4 +1296,4 @@ export default {
   background: #409EFF;
   color: #fff;
 }
-</style> 
+</style>
