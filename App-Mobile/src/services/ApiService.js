@@ -9,9 +9,8 @@
 import LocalForageDataStore from './LocalForageDataStore';
 import AIAccountant from './AIAccountant';
 
-/** 数据库实例的单例引用 */
+
 let dbInstance = null;
-/** AI记账助手实例的单例引用 */
 let aiAccountant = null;
 
 /**
@@ -23,7 +22,7 @@ let aiAccountant = null;
 function getDb() {
   if (!dbInstance) {
     dbInstance = new LocalForageDataStore();
-    dbInstance.initializeDb(); // 初始化数据库
+    dbInstance.initializeDb();
   }
   return dbInstance;
 }
@@ -69,7 +68,7 @@ function getTimeRangeFromPeriod(timePeriodStr, referenceDateStr = null) {
     try {
       today = parseDateOptional(referenceDateStr) || today;
     } catch (e) {
-      // 忽略错误，使用当前日期
+      console.warn("无效的参考日期，使用当前日期");
     }
   }
 
@@ -82,30 +81,25 @@ function getTimeRangeFromPeriod(timePeriodStr, referenceDateStr = null) {
 
   const timePeriodLower = timePeriodStr.toLowerCase();
 
-  // 尝试解析为具体日期 YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(timePeriodStr)) {
     const dt = new Date(timePeriodStr);
     return [dt, dt];
   }
   
-  // 尝试解析为年月 YYYY-MM
   if (/^\d{4}-\d{2}$/.test(timePeriodStr)) {
     const year = parseInt(timePeriodStr.split('-')[0]);
-    const month = parseInt(timePeriodStr.split('-')[1]) - 1; // JavaScript月份从0开始
+    const month = parseInt(timePeriodStr.split('-')[1]) - 1;
     startDate = new Date(year, month, 1);
-    endDate = new Date(year, month + 1, 0); // 月末日期
+    endDate = new Date(year, month + 1, 0);
     return [startDate, endDate];
   }
   
-  // 尝试解析为年份 YYYY
   if (/^\d{4}$/.test(timePeriodStr)) {
     const year = parseInt(timePeriodStr);
     startDate = new Date(year, 0, 1);
-    endDate = new Date(year, 11, 31);
-    return [startDate, endDate];
+    endDate = new Date(year, 11, 31);    return [startDate, endDate];
   }
-
-  // 预定义的时间周期
+  
   if (timePeriodLower === "today" || timePeriodLower === "今天") {
     startDate = endDate = today;
   } else if (timePeriodLower === "yesterday" || timePeriodLower === "昨天") {
@@ -114,9 +108,9 @@ function getTimeRangeFromPeriod(timePeriodStr, referenceDateStr = null) {
     endDate = new Date(startDate);
   } else if (timePeriodLower === "this_week" || timePeriodLower === "本周") {
     startDate = new Date(today);
-    startDate.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)); // 从周一开始
+    startDate.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
     endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 6); // 到周日结束
+    endDate.setDate(startDate.getDate() + 6);
   } else if (timePeriodLower === "last_week" || timePeriodLower === "上周") {
     const endOfLastWeek = new Date(today);
     endOfLastWeek.setDate(today.getDate() - today.getDay() - (today.getDay() === 0 ? 0 : 0));
@@ -141,7 +135,6 @@ function getTimeRangeFromPeriod(timePeriodStr, referenceDateStr = null) {
   }
 
   if (startDate && endDate) {
-    // 将时间设置为起始日的00:00:00和结束日的23:59:59
     startDate.setHours(0, 0, 0, 0);
     endDate.setHours(23, 59, 59, 999);
     return [startDate, endDate];
@@ -157,7 +150,6 @@ function getTimeRangeFromPeriod(timePeriodStr, referenceDateStr = null) {
  */
 function formatDateTimeForDb(date) {
   if (!date) return null;
-  // 使用本地时间而非UTC时间，避免时区问题
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -167,9 +159,7 @@ function formatDateTimeForDb(date) {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
-/**
- * API服务类
- */
+
 /**
  * API服务类
  * 提供应用的所有数据操作和业务逻辑
@@ -311,7 +301,6 @@ class ApiService {
   async startAI() {
     try {
       const ai = getAiAccountant();
-      // 简单确认AI是否可用
       if (ai) {
         return { success: true, message: "AI记账助手已启动" };
       } else {
@@ -352,7 +341,6 @@ class ApiService {
       const category = transaction.category || '其他';
       const type = transaction.type;
       
-      // 根据incomeExpenseFocus筛选
       if (incomeExpenseFocus !== "all" && incomeExpenseFocus !== type) {
         continue;
       }
@@ -381,12 +369,11 @@ class ApiService {
     const {
       startDateStr = null, 
       endDateStr = null,
-      incomeExpenseFocus = "net_income", // income, expense, net_income, total_flow
+      incomeExpenseFocus = "net_income",
       categories = null,
-      timeUnit = "day" // day, week, month, year
+      timeUnit = "day"
     } = options;
     
-    // 解析日期
     const queryStartDate = parseDateOptional(startDateStr);
     const queryEndDate = parseDateOptional(endDateStr);
     
@@ -394,7 +381,6 @@ class ApiService {
       throw new Error(`时间序列数据的日期范围无效: ${startDateStr} 到 ${endDateStr}`);
     }
     
-    // 获取交易数据
     const allTransactions = await this.getFilteredTransactionList({
       startDateStr,
       endDateStr,
@@ -402,35 +388,31 @@ class ApiService {
       categories
     });
     
-    // 按日期分组数据
     const dataByDate = {};
     
     for (const transaction of allTransactions) {
       const currentAmount = parseFloat(transaction.amount);
       let itemDatetime;
       
-      // 处理datetime字符串格式
       if (typeof transaction.datetime === 'string') {
         itemDatetime = new Date(transaction.datetime.replace(' ', 'T'));
       } else if (transaction.datetime instanceof Date) {
         itemDatetime = transaction.datetime;
       } else {
-        continue; // 跳过无法解析的日期
+        continue;
       }
       
-      // 根据timeUnit获取聚合键
       let groupKey;
       if (timeUnit === 'week') {
-        const dayOfWeek = itemDatetime.getDay(); // 0-6
+        const dayOfWeek = itemDatetime.getDay(); 
         const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
         groupKey = weekdays[dayOfWeek];
       } else if (timeUnit === 'month') {
-        groupKey = itemDatetime.getDate().toString() + '日'; // 日期
+        groupKey = itemDatetime.getDate().toString() + '日';
       } else if (timeUnit === 'year') {
-        groupKey = (itemDatetime.getMonth() + 1).toString() + '月'; // 月份
+        groupKey = (itemDatetime.getMonth() + 1).toString() + '月';
       } else {
-        // 默认按日期分组
-        groupKey = itemDatetime.toISOString().split('T')[0]; // YYYY-MM-DD
+        groupKey = itemDatetime.toISOString().split('T')[0];
       }
       
       if (!dataByDate[groupKey]) {
@@ -446,7 +428,6 @@ class ApiService {
         };
       }
       
-      // 根据类型聚合数据
       const valueToAggregate = Math.abs(currentAmount);
       if (transaction.type === 'income') {
         dataByDate[groupKey].income += valueToAggregate;
@@ -459,7 +440,6 @@ class ApiService {
       }
     }
     
-    // 转换为数组格式
     const result = Object.entries(dataByDate).map(([key, data]) => ({
       group_key: key,
       date: data.date,
@@ -507,11 +487,9 @@ class ApiService {
         incomeCategories = []
       } = filters;
 
-      // 合并所有筛选类别
       const allFilteredCategories = [...expenseCategories, ...incomeCategories];
       const combinedCategories = allFilteredCategories.length > 0 ? allFilteredCategories : null;
 
-      // 1. 汇总统计
       const summaryStats = await this.getSummaryStatistics({
         startDateStr,
         endDateStr,
@@ -519,7 +497,6 @@ class ApiService {
         categories: combinedCategories
       });
 
-      // 2. 分类分布
       const expenseCategoryDistribution = await this.getCategoryDistribution({
         startDateStr,
         endDateStr,
@@ -536,7 +513,6 @@ class ApiService {
         parentCategories: incomeCategories.length > 0 ? incomeCategories : null
       });
 
-      // 3. 趋势数据
       const trendData = await this.getTimeSeries({
         startDateStr,
         endDateStr,

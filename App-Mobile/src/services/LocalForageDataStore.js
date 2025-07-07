@@ -33,20 +33,17 @@ class LocalForageDataStore {
     try {
       console.log('初始化 localforage 数据库...');
       
-      // 配置主存储实例
       localforage.config({
         name: 'AIccounting',
-        storeName: 'entries', // 默认存储名称
+        storeName: 'entries',
         description: 'AI记账助手的本地数据存储'
       });
       
-      // 创建单独的存储实例用于账目数据
       this.entriesStore = localforage.createInstance({
         name: 'AIccounting',
         storeName: 'entries'
       });
       
-      // 检查数据库是否正常工作
       await this.entriesStore.setItem('__test__', 'ok');
       const test = await this.entriesStore.getItem('__test__');
       if (test !== 'ok') {
@@ -76,15 +73,12 @@ class LocalForageDataStore {
 
       console.log('准备添加记账条目:', entry);
       
-      // 获取所有现有条目
       let entries = await this.getAllEntries();
       
-      // 生成新的ID (自增)
       const newId = entries.length > 0 
         ? Math.max(...entries.map(e => e.id || 0)) + 1 
         : 1;
       
-      // 创建新条目对象
       const newEntry = {
         id: newId,
         amount: parseFloat(entry.amount),
@@ -95,10 +89,8 @@ class LocalForageDataStore {
         created_at: new Date().toISOString()
       };
       
-      // 添加到数组
       entries.push(newEntry);
       
-      // 保存回 localforage
       await this.entriesStore.setItem('entries', entries);
       
       console.log(`成功添加记账条目, ID: ${newId}`);
@@ -139,17 +131,14 @@ class LocalForageDataStore {
         await this.initializeDb();
       }
 
-      // 获取所有条目
       let entries = await this.getAllEntries();
       
-      // 查找要更新的条目
       const index = entries.findIndex(entry => entry.id === entryId);
       if (index === -1) {
         console.error(`未找到ID为 ${entryId} 的记账条目`);
         return false;
       }
       
-      // 更新条目
       entries[index] = {
         ...entries[index],
         amount: updatedEntry.amount !== undefined ? parseFloat(updatedEntry.amount) : entries[index].amount,
@@ -159,7 +148,6 @@ class LocalForageDataStore {
         entry_type: updatedEntry.entry_type || updatedEntry.type || entries[index].entry_type
       };
       
-      // 保存回 localforage
       await this.entriesStore.setItem('entries', entries);
       
       return true;
@@ -180,19 +168,15 @@ class LocalForageDataStore {
         await this.initializeDb();
       }
 
-      // 获取所有条目
       let entries = await this.getAllEntries();
       
-      // 过滤掉要删除的条目
       const newEntries = entries.filter(entry => entry.id !== entryId);
       
-      // 如果长度相同，说明没有找到要删除的条目
       if (newEntries.length === entries.length) {
         console.error(`未找到ID为 ${entryId} 的记账条目`);
         return false;
       }
       
-      // 保存回 localforage
       await this.entriesStore.setItem('entries', newEntries);
       
       return true;
@@ -230,25 +214,19 @@ class LocalForageDataStore {
         includeExpense
       });
 
-      // 获取所有条目
       let entries = await this.getAllEntries();
-        // 应用筛选条件
-      const filteredEntries = entries.filter(entry => {        // 日期筛选
+      const filteredEntries = entries.filter(entry => {
         try {
-          // 处理日期字符串，确保使用相同标准比较
           const entryDateTime = entry.datetime;
-          // 统一提取日期部分 (YYYY-MM-DD) 进行比较
           const entryDatePart = entryDateTime.includes('T') 
             ? entryDateTime.split('T')[0] 
             : entryDateTime.split(' ')[0];
           
-          // 将日期提取为可比较的变量
           const startDatePart = startDate ? (startDate.includes('T') ? startDate.split('T')[0] : startDate.split(' ')[0]) : null;
           const endDatePart = endDate ? (endDate.includes('T') ? endDate.split('T')[0] : endDate.split(' ')[0]) : null;
           
           console.log(`比较日期: ${entryDatePart} 与 ${startDatePart} - ${endDatePart}`);
           
-          // 使用字符串比较（YYYY-MM-DD格式可以直接比较）
           if (startDatePart && entryDatePart < startDatePart) {
             return false;
           }
@@ -259,28 +237,25 @@ class LocalForageDataStore {
           console.error("日期比较错误:", e);
           return false;
         }
-        // 类型筛选
+
         if (!includeIncome && entry.entry_type === 'income') {
           return false;
         }
         if (!includeExpense && entry.entry_type === 'expense') {
           return false;
         }
-        
-        // 类别筛选
+
         if (categories && categories.length > 0 && !categories.includes(entry.category)) {
           return false;
         }
         
         return true;
       });
-      
-      // 按日期降序排序
+  
       filteredEntries.sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
       
       // 转换为API预期的格式
       return filteredEntries.map(entry => {
-        // 确保datetime格式一致 (YYYY-MM-DD HH:MM:SS)
         let formattedDatetime = entry.datetime;
         if (formattedDatetime.includes('T')) {
           formattedDatetime = formattedDatetime.replace('T', ' ').substring(0, 19);
@@ -312,14 +287,11 @@ class LocalForageDataStore {
         await this.initializeDb();
       }
 
-      // 构造日期范围查询条件
       const startDate = `${date}T00:00:00`;
       const endDate = `${date}T23:59:59`;
       
-      // 获取当天的交易记录
       const entries = await this.getEntries(startDate, endDate);
       
-      // 计算收入和支出
       let income = 0;
       let expense = 0;
       
@@ -354,18 +326,14 @@ class LocalForageDataStore {
         await this.initializeDb();
       }
 
-      // 构造日期范围
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0);
       
-      // 格式化为ISO字符串
       const startDateStr = startDate.toISOString();
       const endDateStr = endDate.toISOString();
       
-      // 获取当月的交易记录
       const entries = await this.getEntries(startDateStr, endDateStr);
       
-      // 计算收入和支出
       let income = 0;
       let expense = 0;
       
@@ -419,7 +387,6 @@ class LocalForageDataStore {
         await this.initializeDb();
       }
       
-      // 尝试读取条目以验证数据库完整性
       const entries = await this.getAllEntries();
       console.log(`数据库正常，共有 ${entries.length} 条记录`);
       return true;
@@ -427,7 +394,6 @@ class LocalForageDataStore {
       console.error('数据库检查失败，尝试修复:', error);
       
       try {
-        // 重新初始化
         this.isInitialized = false;
         await this.initializeDb();
         console.log('数据库已重新初始化');

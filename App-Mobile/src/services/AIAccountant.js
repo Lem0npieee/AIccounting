@@ -25,15 +25,13 @@ const API_URL = "https://api.deepseek.com/v1/chat/completions";
 async function queryDeepseek(prompt, language = "zh", temperature = 0) {
   try {
     console.log("准备调用DeepSeek API...");
-    // 确保prompt不为空
     if (!prompt || prompt.trim() === "") {
       console.error("提示词为空");
       return "请提供有效的提示信息";
     }
 
-  // 构建请求数据 - 按照DeepSeek官方文档格式
     const data = {
-      model: "deepseek-chat", // 使用DeepSeek-V3模型
+      model: "deepseek-chat",
       messages: [
         { 
           role: "system", 
@@ -47,23 +45,20 @@ async function queryDeepseek(prompt, language = "zh", temperature = 0) {
     
     console.log("发送API请求...");
     
-    // 设置API请求选项 - 根据官方文档
     const requestOptions = {
       headers: {
         "Authorization": `Bearer ${DEEPSEEK_API_KEY}`,
         "Content-Type": "application/json"
       },
-      timeout: 30000 // 30秒超时
+      timeout: 30000
     };
     
-    // 发送API请求
     console.log("尝试请求DeepSeek API端点...");
     const response = await axios.post(API_URL, data, requestOptions);
     
     console.log("API响应状态:", response.status);
     console.log("API响应数据:", JSON.stringify(response.data).substring(0, 300) + "...");
     
-    // 处理API响应
     if (response.status === 200) {
       if (response.data && response.data.choices && response.data.choices[0] && response.data.choices[0].message) {
         return response.data.choices[0].message.content;
@@ -78,7 +73,6 @@ async function queryDeepseek(prompt, language = "zh", temperature = 0) {
   } catch (error) {
     console.error("DeepSeek API请求失败:", error);
     
-    // 详细错误日志
     if (error.response) {
       console.error("服务器响应错误:", error.response.status);
       console.error("响应头:", JSON.stringify(error.response.headers));
@@ -87,10 +81,8 @@ async function queryDeepseek(prompt, language = "zh", temperature = 0) {
     } else if (error.request) {
       console.error("请求发送但无响应:", error.request);
       
-      // 当API调用失败时，提供降级服务
       console.log("API调用失败，使用本地模拟数据");
       
-      // 对于记账相关的提示，返回模拟结果
       if (prompt.includes("记账") || prompt.includes("提取") || prompt.includes("交易")) {
         return JSON.stringify([
           {
@@ -102,7 +94,6 @@ async function queryDeepseek(prompt, language = "zh", temperature = 0) {
           }
         ]);
       } else {
-        // 通用聊天回复
         return "抱歉，我无法连接到DeepSeek API服务器。请检查网络连接和API密钥配置，或联系管理员获取帮助。";
       }
     } else {
@@ -124,7 +115,6 @@ class AIAccountant {
    */
   constructor(dataStore) {
     this.dataStore = dataStore;
-    // 预设账目类别
     this.defaultCategories = {
       "收入": ["工资", "奖金", "补贴", "兼职", "投资", "其他收入"],
       "支出": ["餐饮", "购物", "交通", "住房", "娱乐", "教育", "医疗", "日用品", "其他支出"]
@@ -135,7 +125,6 @@ class AIAccountant {
    * @param {string} userMessage 用户消息
    * @returns {Promise<Array|Object|null>} 提取的记账信息
    */  async _extractAccountingInfo(userMessage) {
-    // 构建提示词，指导AI模型提取所需信息
     const incomeCategories = this.defaultCategories["收入"].join(", ");
     const expenseCategories = this.defaultCategories["支出"].join(", ");
     
@@ -201,13 +190,10 @@ class AIAccountant {
       const response = await queryDeepseek(prompt);
       console.log("收到API响应:", response?.substring(0, 200) + "...");
       
-      // 如果没有得到响应，使用模拟数据
       if (!response) {
         console.log("API无响应，使用模拟数据");
         
-        // 判断输入是否可能是记账信息
         if (userMessage.match(/(\d+(\.\d+)?元|收入|支出|买|卖|花|赚)/)) {
-          // 返回模拟记账数据
           return [{
             "amount": userMessage.includes("收入") ? 100 : -100,
             "category": userMessage.includes("收入") ? "其他收入" : "其他支出",
@@ -220,15 +206,11 @@ class AIAccountant {
         }
       }
       
-      // 提取JSON部分
       let data;
       try {
-        // 尝试多种方式解析JSON
         try {
-          // 1. 直接尝试解析整个响应
           data = JSON.parse(response);
         } catch (e) {
-          // 2. 尝试提取JSON部分
           const match = response.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
           if (match) {
             const jsonStr = match[1];
@@ -240,25 +222,20 @@ class AIAccountant {
         
         console.log("成功解析JSON数据:", typeof data, Array.isArray(data));
         
-        // 检查是否为字典，且不是记账内容
         if (typeof data === 'object' && !Array.isArray(data) && data.is_accounting === false) {
           console.log("API返回非记账内容");
           return null;
         }
         
-        // 将单个条目转换为列表格式
         const entries = Array.isArray(data) ? data : [data];
         const resultEntries = [];
         
         console.log("处理记账条目数量:", entries.length);
-          // 处理每个条目
         for (const entry of entries) {
-          // 检查记账必要字段是否存在
           if (!entry.amount || !entry.category) {
             console.log("跳过缺少必要字段的条目:", entry);
             continue;
           }
-            // 无论用户输入什么，始终使用当前本地时间
           const now = new Date();
           const year = now.getFullYear();
           const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -268,7 +245,6 @@ class AIAccountant {
           const seconds = String(now.getSeconds()).padStart(2, '0');
           entry.datetime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
           
-          // 确保amount为数值并根据type调整正负
           if (entry.amount !== undefined) {
             let amount = parseFloat(entry.amount);
             if (entry.type === 'income' && amount < 0) {
@@ -279,7 +255,6 @@ class AIAccountant {
             entry.amount = amount;
           }
           
-          // 确保类别在预设类别中
           if (entry.type === 'income') {
             if (!this.defaultCategories["收入"].includes(entry.category)) {
               console.log(`将非预设收入类别 "${entry.category}" 映射为 "其他收入"`);
@@ -295,7 +270,6 @@ class AIAccountant {
           resultEntries.push(entry);
         }
         
-        // 如果所有条目都无效，返回null
         if (resultEntries.length === 0) {
           return null;
         }
@@ -317,7 +291,6 @@ class AIAccountant {
    * @returns {Promise<Array>} [是否敏感, 敏感内容]
    */
   async _checkSensitiveContent(text) {
-    // 构建用于识别敏感内容的提示词
     const prompt = `
       请检查以下文本是否包含违反法律法规的内容，如赌博、毒品等。如果包含，请简单说明包含什么敏感内容；如果不包含，请只回复"无敏感内容"。
 
@@ -373,19 +346,17 @@ class AIAccountant {
    * @returns {Promise<string>} 报表分析回复
    */
   async _generateReportResponse(reportType, timePeriod) {
-    // 获取entries数据
+
     const entries = await this.dataStore.getEntries();
     
     if (!entries || entries.length === 0) {
       return "目前没有任何记账数据，无法生成报表分析。请先添加一些记账数据吧！";
     }
     
-    // 获取当前日期信息，用于确定时间范围
     const today = new Date();
     let startDate = null;
     let endDate = today.toISOString().split('T')[0] + ' 23:59:59';
     
-    // 根据时间周期确定查询的开始日期
     if (timePeriod === "今天") {
       startDate = today.toISOString().split('T')[0] + ' 00:00:00';
     } else if (timePeriod === "昨天") {
@@ -394,13 +365,11 @@ class AIAccountant {
       startDate = yesterday.toISOString().split('T')[0] + ' 00:00:00';
       endDate = yesterday.toISOString().split('T')[0] + ' 23:59:59';
     } else if (timePeriod === "本周") {
-      // 计算本周一的日期
       const firstDayOfWeek = new Date(today);
-      const day = today.getDay() || 7;  // 将周日的0转为7
+      const day = today.getDay() || 7;
       firstDayOfWeek.setDate(today.getDate() - day + 1);
       startDate = firstDayOfWeek.toISOString().split('T')[0] + ' 00:00:00';
     } else if (timePeriod === "上周") {
-      // 计算上周一和上周日的日期
       const firstDayOfLastWeek = new Date(today);
       const day = today.getDay() || 7;
       firstDayOfLastWeek.setDate(today.getDate() - day - 6);
@@ -409,10 +378,8 @@ class AIAccountant {
       startDate = firstDayOfLastWeek.toISOString().split('T')[0] + ' 00:00:00';
       endDate = lastDayOfLastWeek.toISOString().split('T')[0] + ' 23:59:59';
     } else if (timePeriod === "本月") {
-      // 计算本月初的日期
       startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01 00:00:00`;
     } else if (timePeriod === "上月") {
-      // 计算上月的起始和结束日期
       const firstDayOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
       const lastDayOfLastMonth = new Date(firstDayOfCurrentMonth);
       lastDayOfLastMonth.setDate(lastDayOfLastMonth.getDate() - 1);
@@ -420,14 +387,11 @@ class AIAccountant {
       startDate = firstDayOfLastMonth.toISOString().split('T')[0] + ' 00:00:00';
       endDate = lastDayOfLastMonth.toISOString().split('T')[0] + ' 23:59:59';
     } else if (timePeriod === "今年") {
-      // 计算本年初的日期
       startDate = `${today.getFullYear()}-01-01 00:00:00`;
     }
-    
-    // 使用设定的时间范围获取数据
+
     const filteredEntries = await this.dataStore.getEntries(startDate, endDate);
-    
-    // 简单数据统计
+  
     const incomeEntries = filteredEntries.filter(e => parseFloat(e.amount) > 0);
     const expenseEntries = filteredEntries.filter(e => parseFloat(e.amount) < 0);
     
@@ -435,7 +399,7 @@ class AIAccountant {
     const totalExpense = expenseEntries.reduce((sum, entry) => sum + Math.abs(parseFloat(entry.amount)), 0);
     const netIncome = totalIncome - totalExpense;
     
-    // 按类别统计支出
+
     const expenseByCategory = {};
     for (const entry of expenseEntries) {
       const category = entry.category || "未分类";
@@ -446,7 +410,6 @@ class AIAccountant {
       expenseByCategory[category] += amount;
     }
     
-    // 按类别统计收入
     const incomeByCategory = {};
     for (const entry of incomeEntries) {
       const category = entry.category || "未分类";
@@ -457,23 +420,19 @@ class AIAccountant {
       incomeByCategory[category] += amount;
     }
     
-    // 找出支出最高的类别
     const topExpenseCategories = Object.entries(expenseByCategory)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
-    
-    // 找出收入最高的类别
+
     const topIncomeCategories = Object.entries(incomeByCategory)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3);
-    
-    // 计算收支比例
+
     let expenseRatio = 0;
     if (totalIncome > 0) {
       expenseRatio = (totalExpense / totalIncome) * 100;
     }
-    
-    // 准备类别占比数据
+
     const expensePercentage = {};
     for (const [cat, amount] of Object.entries(expenseByCategory)) {
       if (totalExpense > 0) {
@@ -481,7 +440,7 @@ class AIAccountant {
       }
     }
     
-    // 构造更加有趣、生活化的报表提示词
+
     const prompt = `
       你是用户的好友，也是一个幽默风趣的"钱包管家"，请根据以下财务数据生成一份轻松有趣的${timePeriod}消费报告。报告应该像朋友间的闲聊，充满个性和乐趣。
       
@@ -528,11 +487,7 @@ class AIAccountant {
     return response;
   }
 
-  /**
-   * 处理用户消息并返回回复
-   * @param {string} userMessage 用户消息
-   * @returns {Promise<string|Object>} 回复内容
-   */  /**
+   /**
    * 处理用户消息并生成响应
    * 
    * @param {string} userMessage - 用户输入的消息文本
@@ -545,13 +500,11 @@ class AIAccountant {
       return `抱歉，您的消息可能包含不适当的内容: ${sensitiveInfo}。请重新输入合规的内容。`;
     }
     
-    // 判断是否是查询或报表请求
     if (userMessage.includes("报表") || userMessage.includes("分析") || 
         userMessage.includes("统计") || userMessage.includes("报告")) {
-      // 确定时间周期
+
       let timePeriod = "本月";
-      
-      // 更详细地识别时间周期
+
       if (userMessage.includes("今天") || userMessage.includes("当天") || userMessage.includes("今日")) {
         timePeriod = "今天";
       } else if (userMessage.includes("昨天") || userMessage.includes("昨日")) {
@@ -574,12 +527,9 @@ class AIAccountant {
       return await this._generateReportResponse("general", timePeriod);
     }
     
-    // 提取记账信息
     const extractedInfo = await this._extractAccountingInfo(userMessage);
     if (extractedInfo) {
-      // 检查是否为多条记账条目
       if (Array.isArray(extractedInfo)) {
-        // 添加多条记账条目
         let successCount = 0;
         for (const entry of extractedInfo) {
           const entryId = await this.dataStore.addEntry(entry);
@@ -589,7 +539,6 @@ class AIAccountant {
         }
         
         if (successCount > 0) {
-          // 生成回复，告知用户已成功添加多条记账条目
           const aiReply = await this._generateAiResponse(extractedInfo, `添加了${successCount}条记录`);          // 将所有条目转换为结构化信息
           const ledgerEntries = extractedInfo.map(entry => ({
             amount: entry.amount,
@@ -606,7 +555,6 @@ class AIAccountant {
           return "很抱歉，记账时出现了问题。请稍后再试。";
         }
       } else {
-        // 添加单条记账条目
         const entryId = await this.dataStore.addEntry(extractedInfo);
         if (entryId) {          const aiReply = await this._generateAiResponse(extractedInfo, "添加");
           const ledgerEntry = {
