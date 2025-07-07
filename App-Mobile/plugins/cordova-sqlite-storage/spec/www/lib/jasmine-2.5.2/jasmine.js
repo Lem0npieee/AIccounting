@@ -2076,7 +2076,7 @@ getJasmineRequireObj().SpyRegistry = function(j$) {
       }
 
       if (obj[methodName] && j$.isSpy(obj[methodName])  ) {
-        if ( !!this.respy ){
+        if ( this.respy ){
           return obj[methodName];
         }else {
           throw new Error(getErrorMsg(methodName + ' has already been spied upon'));
@@ -3085,7 +3085,7 @@ getJasmineRequireObj().toBeFalsy = function() {
     return {
       compare: function(actual) {
         return {
-          pass: !!!actual
+          pass: !actual
         };
       }
     };

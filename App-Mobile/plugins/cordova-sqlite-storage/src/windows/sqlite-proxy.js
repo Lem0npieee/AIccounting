@@ -31,7 +31,7 @@ module.exports = {
 	    var res;
 
 		function openImmediate(dbname) {
-			if (!!dbmap[dbname]) {
+			if (dbmap[dbname]) {
 				// NO LONGER EXPECTED due to BUG 666 workaround solution:
 				fail("INTERNAL ERROR: database already open for dbname: " + dbname);
 			}
@@ -139,7 +139,7 @@ module.exports = {
 					return;
 				}
 
-				if (!!dbmap[dbname]) {
+				if (dbmap[dbname]) {
 					dbmap[dbname].close_v2();
 
 					delete dbmap[dbname];

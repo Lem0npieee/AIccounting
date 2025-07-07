@@ -13,12 +13,12 @@ window.initSqlJs().then(sql => { SQL = sql })
 function openDatabase(success, error, options) {
   var name = options[0].name;
 
-  if (!!dbmap[name]) return setTimeout(function() {
+  if (dbmap[name]) return setTimeout(function() {
     error('INTERNAL OPEN ERROR: db already open for ' + name);
   }, 0);
 
   // Support close-and-reopen tests
-  if (!!closed_dbmap[name]) {
+  if (closed_dbmap[name]) {
     var db = dbmap[name] = closed_dbmap[name];
     delete closed_dbmap[name];
     try {
@@ -112,7 +112,7 @@ function closeDatabase(success, error, options) {
 function deleteDatabase(success, error, options) {
   var dbname = options[0].path;
 
-  if (!!closed_dbmap[dbname]) {
+  if (closed_dbmap[dbname]) {
     // XXX TBD causes test timeouts:
     // closed_dbmap[name].close();
     delete closed_dbmap[dbname];

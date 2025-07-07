@@ -182,7 +182,7 @@
           if (_this.dbname in _this.openDBs) {
             _this.openDBs[_this.dbname] = DB_STATE_OPEN;
           }
-          if (!!success) {
+          if (success) {
             success(_this);
           }
           txLock = txLocks[_this.dbname];
@@ -194,7 +194,7 @@
       openerrorcb = (function(_this) {
         return function() {
           console.log('OPEN database: ' + _this.dbname + ' FAILED, aborting any pending transactions');
-          if (!!error) {
+          if (error) {
             error(newSQLError('Could not open database'));
           }
           delete _this.openDBs[_this.dbname];
@@ -247,12 +247,12 @@
   SQLitePlugin.prototype.executeSql = function(statement, params, success, error) {
     var myerror, myfn, mysuccess;
     mysuccess = function(t, r) {
-      if (!!success) {
+      if (success) {
         return success(r);
       }
     };
     myerror = function(t, e) {
-      if (!!error) {
+      if (error) {
         return error(e);
       }
     };
@@ -574,7 +574,7 @@
       if (!!openargs.location && !!openargs.iosDatabaseLocation) {
         throw newSQLError('AMBIGUOUS: both location and iosDatabaseLocation settings are present in openDatabase call. Please use either setting, not both.');
       }
-      dblocation = !!openargs.location && openargs.location === 'default' ? iosLocationMap['default'] : !!openargs.iosDatabaseLocation ? iosLocationMap[openargs.iosDatabaseLocation] : dblocations[openargs.location];
+      dblocation = !!openargs.location && openargs.location === 'default' ? iosLocationMap['default'] : openargs.iosDatabaseLocation ? iosLocationMap[openargs.iosDatabaseLocation] : dblocations[openargs.location];
       if (!dblocation) {
         throw newSQLError('Valid iOS database location could not be determined in openDatabase call');
       }
@@ -628,7 +628,7 @@
       if (!!first.location && !!first.iosDatabaseLocation) {
         throw newSQLError('AMBIGUOUS: both location and iosDatabaseLocation settings are present in deleteDatabase call. Please use either setting value, not both.');
       }
-      dblocation = !!first.location && first.location === 'default' ? iosLocationMap['default'] : !!first.iosDatabaseLocation ? iosLocationMap[first.iosDatabaseLocation] : dblocations[first.location];
+      dblocation = !!first.location && first.location === 'default' ? iosLocationMap['default'] : first.iosDatabaseLocation ? iosLocationMap[first.iosDatabaseLocation] : dblocations[first.location];
       if (!dblocation) {
         throw newSQLError('Valid iOS database location could not be determined in deleteDatabase call');
       }
