@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+API模块：提供HTTP接口，处理前端请求，连接数据库和AI助手
+"""
 import datetime
 import calendar
 from collections import defaultdict
@@ -11,11 +14,18 @@ app = Flask(__name__)
 CORS(app)
 
 def _get_db():
-    """实例化并返回一个 MySQLDataStore 对象。"""
+    """获取数据库实例"""
     return MySQLDataStore()
 
 def _parse_date_optional(date_str):
-    """将日期字符串 (YYYY-MM-DD) 解析为日期对象。如果输入为 None，则返回 None。"""
+    """解析日期字符串为日期对象
+    
+    Args:
+        date_str: YYYY-MM-DD格式的日期字符串
+        
+    Returns:
+        datetime.date对象或None
+    """
     if not date_str:
         return None
     try:
@@ -24,6 +34,15 @@ def _parse_date_optional(date_str):
         return None
 
 def _get_time_range_from_period(time_period_str, reference_date_str=None):
+    """根据时间周期字符串获取开始和结束日期
+    
+    Args:
+        time_period_str: 时间周期描述（如'today','本月'等）
+        reference_date_str: 参考日期，默认为今天
+    
+    Returns:
+        (start_date, end_date): 日期对象元组
+    """
     today = datetime.date.today()
     if reference_date_str:
         try:
@@ -81,6 +100,18 @@ def get_filtered_transaction_list_api(
     income_expense_type=None,
     categories=None
 ):
+    """获取符合过滤条件的交易记录列表
+    
+    Args:
+        start_date_str: 开始日期字符串
+        end_date_str: 结束日期字符串
+        time_period: 时间周期描述
+        income_expense_type: 收入/支出类型过滤
+        categories: 类别过滤列表
+        
+    Returns:
+        符合条件的交易记录列表
+    """
     db = _get_db()
     
     s_date, e_date = None, None

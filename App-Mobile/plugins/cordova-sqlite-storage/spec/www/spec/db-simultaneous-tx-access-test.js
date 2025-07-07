@@ -27,7 +27,7 @@ var scenarioList = [
   'Plugin-implementation-2'
 ];
 
-var scenarioCount = (!!window.hasWebKitWebSQL) ? (isAndroid ? 3 : 2) : 1;
+var scenarioCount = (window.hasWebKitWebSQL) ? (isAndroid ? 3 : 2) : 1;
 
 function logSuccess(message) { console.log('OK - ' + message); }
 function logError(message) { console.log('FAILED - ' + message); }

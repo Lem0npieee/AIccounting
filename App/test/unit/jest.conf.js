@@ -14,14 +14,25 @@ module.exports = {
     '^.+\\.js$': '<rootDir>/node_modules/babel-jest',
     '.*\\.(vue)$': '<rootDir>/node_modules/vue-jest'
   },
+  testMatch: [
+    '<rootDir>/test/unit/specs/**/*.spec.js'
+  ],
+  testEnvironment: 'jsdom',
   snapshotSerializers: ['<rootDir>/node_modules/jest-serializer-vue'],
-  setupFiles: ['<rootDir>/test/unit/setup'],
-  mapCoverage: true,
+  setupFiles: ['<rootDir>/test/unit/setupTests.js'],
+  clearMocks: true,
+  collectCoverage: false,
   coverageDirectory: '<rootDir>/test/unit/coverage',
   collectCoverageFrom: [
     'src/**/*.{js,vue}',
     '!src/main.js',
     '!src/router/index.js',
     '!**/node_modules/**'
-  ]
+  ],
+  coverageReporters: [
+    'text',
+    'lcov',
+    'html'
+  ],
+  verbose: true
 }

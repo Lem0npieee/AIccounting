@@ -21,11 +21,11 @@ function test_it(desc, fun) {
   }, MYTIMEOUT);
 }
 function stop(n) {
-  if (!!n) wait += n
+  if (n) wait += n
   else ++wait;
 }
 function start(n) {
-  if (!!n) wait -= n;
+  if (n) wait -= n;
   else --wait;
   if (wait == 0) test_it_done();
 }
