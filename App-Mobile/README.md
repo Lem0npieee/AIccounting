@@ -48,7 +48,7 @@ npm run dev
 
 ```bash
 npm run build
-cordova build android --debug --gradle-args="build bundleRelease"
+`cordova build android --debug --gradle-args="build bundleRelease"`
 ```
 
 生成的APK位于 `platforms/android/app/build/outputs/apk/debug/app-debug.apk`
