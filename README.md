@@ -191,10 +191,10 @@ npm run test
 ## 📊 技术栈
 
 - **前端**: Vue.js, Vue Router, Axios, ECharts
-- **移动端**: Cordova, SQLite
+- **移动端**: Cordova
 - **后端**: Python, Flask, Flask-CORS
-- **数据库**: MySQL, SQLite(移动端)
-- **AI服务**: 自然语言处理
+- **数据库**: MySQL, LocalForage
+- **AI服务**: DeepSeek API
 
 ---
 
