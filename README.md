@@ -1,7 +1,7 @@
 # AIccounting - AI智能记账助手
 
 <p align="center">
-  <img src="文档/image/logo.png" alt="AIccounting Logo" width="200"/>
+  <img src="文档/image/logo2.png" alt="AIccounting Logo" width="600"/>
 </p>
 
 <p align="center">
