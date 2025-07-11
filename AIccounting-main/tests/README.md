@@ -52,7 +52,7 @@
 | 测试方法 | 目的 | 说明 |
 |---------|------|------|
 | `test_parse_date_optional` | 测试日期字符串解析函数 | 验证各种日期格式的解析结果，包括有效日期、无效日期和None输入。 |
-| `test_get_time_range_from_period` | 测试从时间段获取日期范围 | 该测试当前被注释掉，因为涉及复杂的日期mock。测试各种时间段参数如"today"、"this_week"、"this_month"等的解析结果。 |
+| `test_get_time_range_from_period` | 测试从时间段获取日期范围 | 测试各种时间段参数如"today"、"this_week"、"this_month"等的解析结果。 |
 
 ### 4. 基本测试框架验证 (`test_main.py`)
 
