@@ -22,7 +22,7 @@ const API_URL = "https://api.deepseek.com/v1/chat/completions";
  * @returns {Promise<string>} 模型返回的文本响应
  * @throws {Error} 当API调用失败时抛出
  */
-async function queryDeepseek(prompt, language = "zh", temperature = 0) {
+async function queryDeepseek(prompt, temperature = 0) {
   try {
     console.log("准备调用DeepSeek API...");
     if (!prompt || prompt.trim() === "") {

@@ -258,8 +258,7 @@ class ApiService {
     
     let totalIncome = 0.0;
     let totalExpense = 0.0;
-    let incomeByCategory = {};
-    let expenseByCategory = {};
+
     
     for (const t of transactions) {
       const amount = parseFloat(t.amount);
@@ -369,7 +368,6 @@ class ApiService {
     const {
       startDateStr = null, 
       endDateStr = null,
-      incomeExpenseFocus = "net_income",
       categories = null,
       timeUnit = "day"
     } = options;
@@ -480,7 +478,6 @@ class ApiService {
         startDateStr,
         endDateStr,
         timePeriod,
-        chartType = 'line',
         timeUnit = 'day',
         incomeExpenseFocus = 'net_income',
         expenseCategories = [],
